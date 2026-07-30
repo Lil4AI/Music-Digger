@@ -95,7 +95,7 @@ def identify_via_audd(wav_path: str) -> str:
     """
     AudD API を用いて音源から楽曲を識別し、Apple Music ID を取得する。
     """
-    api_token = os.environ.get("AUDD_API_TOKEN")
+    api_token = os.environ.get("AUDD_API_KEY")
     if not api_token:
         return ""
         

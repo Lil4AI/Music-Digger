@@ -13,8 +13,8 @@ def extract_drums_features(wav_path: str) -> np.ndarray:
     onset_env = librosa.onset.onset_strength(y=y, sr=sr)
     
     # テンポ推定
-    tempo = librosa.beat.tempo(onset_envelope=onset_env, sr=sr)
-    tempo_val = float(tempo[0])
+    tempo = librosa.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr)
+    tempo_val = float(tempo[0]) if len(tempo) > 0 else 0.0
     
     # オンセット密度（1秒あたりのオンセット数）
     onsets = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr)
@@ -23,7 +23,8 @@ def extract_drums_features(wav_path: str) -> np.ndarray:
     
     # オンセット強度包絡の自己相関（リズムパターンの反復性）
     # max_sizeは数秒分のフレーム数（hop_length=512なら約2秒=172フレーム程度）
-    ac = librosa.autocorrelate(onset_env, max_size=200)
+    ac_max_size = min(200, len(onset_env))
+    ac = librosa.autocorrelate(onset_env, max_size=ac_max_size) if ac_max_size >= 2 else np.zeros(1)
     
     # ピーク検出 (自己相関のピーク)
     peaks, _ = find_peaks(ac)
@@ -52,4 +53,4 @@ def extract_drums_features(wav_path: str) -> np.ndarray:
         float(top_3_peaks[2]), float(top_3_amps[2])
     ]
     
-    return np.array(features, dtype=np.float32)
+    return np.nan_to_num(np.array(features, dtype=np.float32))

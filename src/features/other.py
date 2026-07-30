@@ -47,7 +47,7 @@ def extract_other_features(wav_path: str) -> np.ndarray:
     
     # Chroma特徴量（調性/メロディの補助特徴）
     chroma = librosa.feature.chroma_stft(y=y, sr=sr)
-    features.extend(np.mean(chroma, axis=1).tolist())
-    features.extend(np.std(chroma, axis=1).tolist())
+    features.extend(np.nan_to_num(np.mean(chroma, axis=1)).tolist())
+    features.extend(np.nan_to_num(np.std(chroma, axis=1)).tolist())
     
-    return np.array(features, dtype=np.float32)
+    return np.nan_to_num(np.array(features, dtype=np.float32))

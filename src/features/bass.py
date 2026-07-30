@@ -13,7 +13,8 @@ def extract_bass_features(wav_path: str) -> np.ndarray:
     
     # メルスペクトログラム
     S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
-    S_db = librosa.power_to_db(S, ref=np.max)
+    ref_val = max(float(np.max(S)), 1e-6)
+    S_db = librosa.power_to_db(S, ref=ref_val)
     features.extend(np.mean(S_db, axis=1))  # 128
     features.extend(np.std(S_db, axis=1))   # 128
     
@@ -33,4 +34,4 @@ def extract_bass_features(wav_path: str) -> np.ndarray:
     features.extend(np.mean(mfcc, axis=1))  # 13
     features.extend(np.std(mfcc, axis=1))   # 13
     
-    return np.array(features, dtype=np.float32)
+    return np.nan_to_num(np.array(features, dtype=np.float32))

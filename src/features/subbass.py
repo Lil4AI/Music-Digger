@@ -17,28 +17,33 @@ def extract_subbass_features(wav_path: str) -> np.ndarray:
     features.extend([float(np.mean(rms)), float(np.std(rms))])
     
     # RMSエネルギー包絡の自己相関（LFO周期の推定）
-    ac = librosa.autocorrelate(rms, max_size=400)
-    peaks, _ = find_peaks(ac)
-    if len(peaks) > 0:
-        peak_vals = ac[peaks]
-        dom_idx = np.argmax(peak_vals)
-        dom_lag = peaks[dom_idx]
-        dom_amp = peak_vals[dom_idx]
-        
-        # lag(フレーム)からHzに変換
-        # librosaデフォルト hop_length=512
-        hop_length = 512
-        frame_rate = sr / hop_length
-        dom_hz = frame_rate / dom_lag if dom_lag > 0 else 0.0
-    else:
+    ac_max_size = min(400, len(rms))
+    if ac_max_size < 2:
         dom_hz = 0.0
         dom_amp = 0.0
+    else:
+        ac = librosa.autocorrelate(rms, max_size=ac_max_size)
+        peaks, _ = find_peaks(ac)
+        if len(peaks) > 0:
+            peak_vals = ac[peaks]
+            dom_idx = np.argmax(peak_vals)
+            dom_lag = peaks[dom_idx]
+            dom_amp = peak_vals[dom_idx]
+            
+            # lag(フレーム)からHzに変換
+            # librosaデフォルト hop_length=512
+            hop_length = 512
+            frame_rate = sr / hop_length
+            dom_hz = frame_rate / dom_lag if dom_lag > 0 else 0.0
+        else:
+            dom_hz = 0.0
+            dom_amp = 0.0
         
     features.extend([float(dom_hz), float(dom_amp)])
     
     # 低域エネルギー比率 (60Hz未満)
     S = np.abs(librosa.stft(y))
-    freqs = librosa.fft_frequencies(sr=sr)
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=2048)
     
     low_freq_mask = freqs < 60
     total_energy = np.sum(S)
@@ -47,4 +52,4 @@ def extract_subbass_features(wav_path: str) -> np.ndarray:
     
     features.append(float(ratio))
     
-    return np.array(features, dtype=np.float32)
+    return np.nan_to_num(np.array(features, dtype=np.float32))

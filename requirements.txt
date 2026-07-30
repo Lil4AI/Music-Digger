@@ -18,3 +18,5 @@ PyJWT
 rapidfuzz
 fastapi
 uvicorn
+cryptography
+pydantic
