@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Digger Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=10">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Header -->
+        <header class="sidebar glass-panel">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>Music Digger</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="dashboard">Dashboard</button>
+                <button class="nav-item" data-target="labeling">Fast Labeling</button>
+                <button class="nav-item" data-target="pipeline">Pipeline Runner</button>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Dashboard View -->
+            <section id="dashboard" class="view-section active">
+                <header class="section-header">
+                    <h2>Track Database</h2>
+                    <p class="subtitle">AI Classification & Stem Status</p>
+                    <button class="btn btn-secondary" onclick="app.trainModel()" style="margin-top: 12px; font-size: 0.85rem; padding: 8px 16px;">
+                        <span class="glow"></span>🤖 Train AI Model
+                    </button>
+                </header>
+                
+                <div class="glass-panel table-container">
+                    <table class="track-table">
+                        <thead>
+                            <tr>
+                                <th>Track ID</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>AI Label</th>
+                                <th>Human Label</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="track-list-body">
+                            <!-- JS will populate this -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Labeling / Waveform View -->
+            <section id="labeling" class="view-section">
+                <header class="section-header">
+                    <h2>Labeling Workspace</h2>
+                    <p class="subtitle">Analyze Stems & Annotate</p>
+                </header>
+
+                <div class="workspace-grid">
+                    <!-- Current Track Info -->
+                    <div class="glass-panel current-track-panel">
+                        <h3>Currently Analyzing</h3>
+                        <div class="track-meta">
+                            <span class="label-badge ai-badge" id="current-ai-label">AI: -</span>
+                            <h2 id="current-track-id">Select a track</h2>
+                        </div>
+                        
+                        <!-- Labeling Actions -->
+                        <div class="labeling-actions">
+                            <button class="btn btn-primary btn-tearout" onclick="app.submitLabel('tearout')">
+                                <span class="glow"></span>
+                                TEAR OUT
+                            </button>
+                            <button class="btn btn-secondary btn-riddim" onclick="app.submitLabel('riddim')">
+                                <span class="glow"></span>
+                                RIDDIM
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- DAW Waveform Viewer -->
+                    <div class="glass-panel waveform-panel">
+                        <div class="waveform-header">
+                            <h3>Stem Timeline</h3>
+                            <button class="btn btn-icon" onclick="app.togglePlayPause()" id="play-btn">▶ Play</button>
+                        </div>
+                        <div id="waveform-container" class="waveform-container">
+                            <div class="empty-state">No track loaded. Select a track to view stems.</div>
+                        </div>
+                        
+                        <div class="track-controls" id="track-controls">
+                            <!-- Track volume controls will be appended here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pipeline Runner View -->
+            <section id="pipeline" class="view-section">
+                <header class="section-header">
+                    <h2>Pipeline Runner</h2>
+                    <p class="subtitle">Run Collection, Separation, and Feature Extraction</p>
+                </header>
+
+                <div class="pipeline-container glass-panel">
+                    <div class="pipeline-controls">
+                        <input type="text" id="pipeline-url" class="input-text" placeholder="Enter SoundCloud URL (optional, defaults to test artist)" />
+                        <button class="btn btn-secondary" onclick="app.startPipeline()">Run Pipeline</button>
+                    </div>
+                    
+                    <div class="terminal-container">
+                        <div class="terminal-header">
+                            <span class="dot bg-red"></span>
+                            <span class="dot bg-yellow"></span>
+                            <span class="dot bg-green"></span>
+                            <span class="terminal-title">Music Digger Console</span>
+                        </div>
+                        <pre id="console-output" class="terminal-output">Ready to start...</pre>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="/static/app.js?v=10"></script>
+</body>
+</html>

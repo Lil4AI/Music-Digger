@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Audio files
+*.wav
+*.mp3
+*.flac
+build/
+.venv/
+venv/
+
+# Data (large audio/model files)
+data/raw_audio/
+data/stems/
+data/features/
+models/*.pt
+models/*.pth
+
+# Database
+db/*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Environment
+.env

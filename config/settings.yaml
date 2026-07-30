@@ -1,0 +1,28 @@
+# EDMサブジャンル自動判定システム — 設定ファイル
+# このファイルは src/config.py から読み込まれる
+
+# 音声処理
+sample_rate: 44100                  # サンプリングレート (Hz)
+stems: [drums, bass, subbass, other]  # ステム分離後のブランチ名
+subbass_cutoff_hz: 120              # bass/subbass帯域分割のカットオフ周波数 (Hz)
+drop_segment_seconds: 18            # ドロップ検出のウィンドウ幅 (秒)
+
+# ジャンル分類
+genre_labels: [tearout, riddim]     # MVPは2値分類。後のフェーズで拡張可能
+model_version: "v0.1"               # 現在のモデルバージョン
+
+# 収集パイプライン設定
+collector:
+  request_delay_sec: 3              # SoundCloud APIリクエスト間のスリープ (秒)
+  max_concurrency: 2                # 同時ダウンロードの最大数
+  min_follower_count: 500           # この値未満のアップローダーは除外
+
+# ディレクトリパス（プロジェクトルートからの相対パス）
+paths:
+  raw_audio: "data/raw_audio"
+  stems: "data/stems"
+  features: "data/features"
+  labels: "data/labels"
+  db: "db"
+  models: "models"
+  logs: "logs"

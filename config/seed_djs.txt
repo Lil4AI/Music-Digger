@@ -1,0 +1,3 @@
+# 収集対象DJのSoundCloudプロフィールURL — 1行に1つ
+# 例:
+# https://soundcloud.com/example-dj-name
