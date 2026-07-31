@@ -34,10 +34,9 @@ def test_get_tracks(mocker):
     assert response.status_code == 200
     assert len(response.json()) == 2
     assert response.json()[0]["title"] == "Track 1"
-
 def test_update_track_label_invalid():
-    # 'tearout' か 'riddim' 以外は400
-    response = client.post("/api/tracks/dummy/label", json={"label": "dubstep"})
+    # 不正なラベルは400
+    response = client.post("/api/tracks/dummy/label", json={"label": "invalid_genre"})
     assert response.status_code == 400
 
 def test_start_pipeline(mocker):

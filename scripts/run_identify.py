@@ -35,7 +35,11 @@ def run():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        cursor.execute("SELECT track_id FROM tracks WHERE ai_label = 'tearout' AND apple_music_id IS NULL")
+        target_genre = settings.genre_labels[0].lower()
+        cursor.execute(
+            "SELECT track_id FROM tracks WHERE ai_label = ? AND apple_music_id IS NULL",
+            (target_genre,)
+        )
         rows = cursor.fetchall()
         
         if not rows:

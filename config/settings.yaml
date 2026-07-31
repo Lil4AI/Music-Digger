@@ -8,7 +8,7 @@ subbass_cutoff_hz: 120              # bass/subbass帯域分割のカットオフ
 drop_segment_seconds: 18            # ドロップ検出のウィンドウ幅 (秒)
 
 # ジャンル分類
-genre_labels: [tearout, riddim]     # MVPは2値分類。後のフェーズで拡張可能
+genre_labels: [dubstep, house]     # 大きなジャンルのくくりで分類テストを行う
 model_version: "v0.1"               # 現在のモデルバージョン
 
 # 収集パイプライン設定
