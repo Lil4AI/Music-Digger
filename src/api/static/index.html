@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=10">
+    <link rel="stylesheet" href="/static/styles.css?v=11">
 </head>
 <body>
     <div class="app-container">
@@ -32,8 +32,8 @@
                 <header class="section-header">
                     <h2>Track Database</h2>
                     <p class="subtitle">AI Classification & Stem Status</p>
-                    <button class="btn btn-secondary" onclick="app.trainModel()" style="margin-top: 12px; font-size: 0.85rem; padding: 8px 16px;">
-                        <span class="glow"></span>🤖 Train AI Model
+                    <button class="btn btn-secondary" id="btn-train-model" style="margin-top: 12px; font-size: 0.85rem; padding: 8px 16px;">
+                        <span class="glow"></span><span class="btn-text">🤖 Train AI Model</span>
                     </button>
                 </header>
                 
@@ -74,13 +74,13 @@
                         
                         <!-- Labeling Actions -->
                         <div class="labeling-actions">
-                            <button class="btn btn-primary btn-tearout" onclick="app.submitLabel('tearout')">
+                            <button class="btn btn-primary btn-tearout" id="btn-tearout">
                                 <span class="glow"></span>
-                                TEAR OUT
+                                <span class="btn-text">TEAR OUT</span>
                             </button>
-                            <button class="btn btn-secondary btn-riddim" onclick="app.submitLabel('riddim')">
+                            <button class="btn btn-secondary btn-riddim" id="btn-riddim">
                                 <span class="glow"></span>
-                                RIDDIM
+                                <span class="btn-text">RIDDIM</span>
                             </button>
                         </div>
                     </div>
@@ -89,7 +89,7 @@
                     <div class="glass-panel waveform-panel">
                         <div class="waveform-header">
                             <h3>Stem Timeline</h3>
-                            <button class="btn btn-icon" onclick="app.togglePlayPause()" id="play-btn">▶ Play</button>
+                            <button class="btn btn-icon" id="play-btn">▶ Play</button>
                         </div>
                         <div id="waveform-container" class="waveform-container">
                             <div class="empty-state">No track loaded. Select a track to view stems.</div>
@@ -112,7 +112,7 @@
                 <div class="pipeline-container glass-panel">
                     <div class="pipeline-controls">
                         <input type="text" id="pipeline-url" class="input-text" placeholder="Enter SoundCloud URL (optional, defaults to test artist)" />
-                        <button class="btn btn-secondary" onclick="app.startPipeline()">Run Pipeline</button>
+                        <button class="btn btn-secondary" id="btn-pipeline">Run Pipeline</button>
                     </div>
                     
                     <div class="terminal-container">
@@ -131,6 +131,6 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="/static/app.js?v=10"></script>
+    <script type="module" src="/static/app.js?v=11"></script>
 </body>
 </html>

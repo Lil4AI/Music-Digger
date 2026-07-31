@@ -467,7 +467,3 @@ body {
     overflow: hidden;
     background: #161B22;
 }
-.stem-wave canvas {
-    width: 100% !important;
-    height: auto !important;
-}

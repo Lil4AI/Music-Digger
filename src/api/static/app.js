@@ -14,11 +14,13 @@ const App = {
     currentTrackId: null,
     players: [],   // WaveSurfer instances
     isPlaying: false,
+    isSeeking: false,  // guard for sync seek loops
     logInterval: null,
 
     /* ── Bootstrap ────────────────────────────────────── */
     async init() {
         this.bindNav();
+        this.bindButtons();
         await this.loadTracks();
         console.log('[Music Digger] init OK – tracks:', this.tracks.length);
     },
@@ -33,6 +35,27 @@ const App = {
                 document.getElementById(target).classList.add('active');
             });
         });
+    },
+
+    bindButtons() {
+        // Train model
+        const trainBtn = document.getElementById('btn-train-model');
+        if (trainBtn) trainBtn.addEventListener('click', () => this.trainModel());
+
+        // Label buttons
+        const tearoutBtn = document.getElementById('btn-tearout');
+        if (tearoutBtn) tearoutBtn.addEventListener('click', () => this.submitLabel('tearout'));
+
+        const riddimBtn = document.getElementById('btn-riddim');
+        if (riddimBtn) riddimBtn.addEventListener('click', () => this.submitLabel('riddim'));
+
+        // Play/pause
+        const playBtn = document.getElementById('play-btn');
+        if (playBtn) playBtn.addEventListener('click', () => this.togglePlayPause());
+
+        // Pipeline
+        const pipelineBtn = document.getElementById('btn-pipeline');
+        if (pipelineBtn) pipelineBtn.addEventListener('click', () => this.startPipeline());
     },
 
     /* ── Data ─────────────────────────────────────────── */
@@ -80,7 +103,6 @@ const App = {
                 <td><button class="btn-action" data-id="${t.track_id}">Analyze &amp; Label</button></td>
             `;
 
-            // onclick via event delegation (avoids inline handler scoping issues with ESM)
             tr.querySelector('.btn-action').addEventListener('click', () => {
                 this.loadTrackForLabeling(t.track_id);
             });
@@ -111,9 +133,8 @@ const App = {
         this.initWaveforms(trackId);
     },
 
-    /* ── Waveform (4 × individual WaveSurfer) ─────────── */
+    /* ── Waveform (4 × synced WaveSurfer) ─────────────── */
     initWaveforms(trackId) {
-        // Tear down previous instances
         this.destroyPlayers();
 
         const container = document.getElementById('waveform-container');
@@ -138,7 +159,7 @@ const App = {
 
             container.appendChild(row);
 
-            // Create WaveSurfer
+            // Create WaveSurfer (no deprecated 'backend' option)
             const ws = WaveSurfer.create({
                 container: waveDiv,
                 waveColor: stem.wave,
@@ -149,14 +170,24 @@ const App = {
                 barRadius: 2,
                 cursorColor: '#fff',
                 cursorWidth: 1,
-                backend: 'WebAudio',
                 url: `/api/audio/${trackId}/${stem.key}`,
             });
 
             this.players.push(ws);
         });
 
-        // Sync play/pause across all players
+        // Sync seeking: when user seeks on one waveform, update all others
+        this.players.forEach((ws, i) => {
+            ws.on('seeking', (currentTime) => {
+                if (this.isSeeking) return;
+                this.isSeeking = true;
+                this.players.forEach((other, j) => {
+                    if (j !== i) other.setTime(currentTime);
+                });
+                this.isSeeking = false;
+            });
+        });
+
         const playBtn = document.getElementById('play-btn');
         if (playBtn) playBtn.textContent = '▶ Play';
         this.isPlaying = false;
@@ -190,8 +221,15 @@ const App = {
                 body: JSON.stringify({ label }),
             });
             if (res.ok) {
-                const btn = document.querySelector(`.btn-${label}`);
-                if (btn) { btn.textContent = '✓ SAVED'; setTimeout(() => { btn.textContent = label.toUpperCase(); }, 1200); }
+                // Update only the .btn-text span to preserve the glow span
+                const btn = document.getElementById(`btn-${label}`);
+                if (btn) {
+                    const textSpan = btn.querySelector('.btn-text');
+                    if (textSpan) {
+                        textSpan.textContent = '✓ SAVED';
+                        setTimeout(() => { textSpan.textContent = label.toUpperCase(); }, 1200);
+                    }
+                }
                 await this.loadTracks();
             } else {
                 alert('Failed to save label.');
@@ -226,31 +264,32 @@ const App = {
     },
 
     async trainModel() {
-        const btn = document.querySelector('button[onclick="app.trainModel()"]');
-        const origText = btn.innerHTML;
-        btn.innerHTML = '🤖 Training...';
+        const btn = document.getElementById('btn-train-model');
+        const textSpan = btn.querySelector('.btn-text');
+        const origText = textSpan.textContent;
+        textSpan.textContent = '🤖 Training...';
         btn.disabled = true;
         
         try {
             const res = await fetch('/api/model/train', { method: 'POST' });
             if (res.ok) {
-                btn.innerHTML = '🤖 Training Started!';
+                textSpan.textContent = '🤖 Training Started!';
                 setTimeout(() => {
-                    btn.innerHTML = origText;
+                    textSpan.textContent = origText;
                     btn.disabled = false;
                 }, 3000);
             } else {
-                btn.innerHTML = '❌ Failed to start training';
+                textSpan.textContent = '❌ Failed to start training';
                 setTimeout(() => {
-                    btn.innerHTML = origText;
+                    textSpan.textContent = origText;
                     btn.disabled = false;
                 }, 3000);
             }
         } catch (e) {
             console.error(e);
-            btn.innerHTML = '❌ Network error';
+            textSpan.textContent = '❌ Network error';
             setTimeout(() => {
-                btn.innerHTML = origText;
+                textSpan.textContent = origText;
                 btn.disabled = false;
             }, 3000);
         }
@@ -278,4 +317,4 @@ const App = {
 
 /* ── Global binding & boot ────────────────────────────── */
 window.app = App;
-document.addEventListener('DOMContentLoaded', () => app.init());
+document.addEventListener('DOMContentLoaded', () => App.init());
