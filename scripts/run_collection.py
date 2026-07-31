@@ -32,7 +32,7 @@ def run(target_url: str):
     
     if not candidates:
         print("トラックが見つかりませんでした。")
-        return
+        sys.exit(1)
         
     print(f"{len(candidates)} 件の候補が見つかりました。")
     
