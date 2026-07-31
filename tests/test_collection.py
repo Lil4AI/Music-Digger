@@ -34,6 +34,10 @@ def test_passes_prefilter():
     # 除外キーワードが含まれる (podcast)
     track_podcast = {'title': 'My Podcast episode 1', 'duration': 300}
     assert passes_prefilter(track_podcast) == False
+    
+    # 誤爆チェック (Sunsetに 'set' が含まれるが除外されないこと)
+    track_sunset = {'title': 'Beautiful Sunset', 'duration': 300}
+    assert passes_prefilter(track_sunset) == True
 
 def test_download_track(mocker):
     mock_ydl_class = mocker.patch('src.collectors.soundcloud.yt_dlp.YoutubeDL')

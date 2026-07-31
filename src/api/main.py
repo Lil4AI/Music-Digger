@@ -1,6 +1,8 @@
 import sqlite3
 import subprocess
 import asyncio
+import sys
+import contextlib
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, HTMLResponse
@@ -10,13 +12,15 @@ from pydantic import BaseModel
 
 from src.config import settings
 
+_is_pipeline_running = False
+
 app = FastAPI(title="Music Digger API")
 
 # フロントエンド(React)からのアクセスを許可
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -43,12 +47,11 @@ def get_db_connection():
 @app.get("/api/tracks")
 def get_tracks():
     """全トラックのメタデータとステータスを取得"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tracks ORDER BY created_at DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    
+    with contextlib.closing(get_db_connection()) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tracks ORDER BY created_at DESC")
+        rows = cursor.fetchall()
+        
     return [dict(row) for row in rows]
 
 class LabelUpdate(BaseModel):
@@ -60,21 +63,19 @@ def update_track_label(track_id: str, update: LabelUpdate):
     if update.label.lower() not in ['tearout', 'riddim']:
         raise HTTPException(status_code=400, detail="Invalid label. Must be 'tearout' or 'riddim'")
         
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # 存在チェック
-    cursor.execute("SELECT track_id FROM tracks WHERE track_id = ?", (track_id,))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail="Track not found")
+    with contextlib.closing(get_db_connection()) as conn:
+        cursor = conn.cursor()
         
-    cursor.execute(
-        "UPDATE tracks SET human_label = ? WHERE track_id = ?",
-        (update.label.lower(), track_id)
-    )
-    conn.commit()
-    conn.close()
+        # 存在チェック
+        cursor.execute("SELECT track_id FROM tracks WHERE track_id = ?", (track_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Track not found")
+            
+        cursor.execute(
+            "UPDATE tracks SET human_label = ? WHERE track_id = ?",
+            (update.label.lower(), track_id)
+        )
+        conn.commit()
     
     return {"status": "success", "track_id": track_id, "human_label": update.label.lower()}
 
@@ -102,61 +103,69 @@ class PipelineRequest(BaseModel):
 def run_pipeline_task(target_url: str, log_file: Path):
     """バックグラウンドでパイプラインスクリプトを順次実行し、ログファイルに出力する"""
     import os
-    python_exe = Path(settings.project_root) / ".venv" / "Scripts" / "python.exe"
-    venv_scripts = Path(settings.project_root) / ".venv" / "Scripts"
-    
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(Path(settings.project_root))
-    # yt-dlpがffmpegを見つけられるようにPATHに追加
-    env["PATH"] = f"{venv_scripts};{env.get('PATH', '')}"
-    
-    with open(log_file, "w", encoding="utf-8") as f:
-        f.write("=== Pipeline Started ===\n")
-        f.flush()
+    global _is_pipeline_running
+    try:
+        python_exe = sys.executable
+        venv_scripts = Path(settings.project_root) / ".venv" / "Scripts"
         
-        scripts = [
-            ("scripts/run_collection.py", [target_url] if target_url else []),
-            ("scripts/run_separation.py", []),
-            ("scripts/run_features.py", []),
-            ("scripts/run_inference.py", [])
-        ]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path(settings.project_root))
+        # yt-dlpがffmpegを見つけられるようにPATHに追加
+        env["PATH"] = f"{venv_scripts};{env.get('PATH', '')}"
         
-        for script, args in scripts:
-            f.write(f"\n>>> Running {script}...\n")
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write("=== Pipeline Started ===\n")
             f.flush()
             
-            cmd = [str(python_exe), script] + args
-            try:
-                process = subprocess.Popen(
-                    cmd, 
-                    cwd=str(settings.project_root), 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.STDOUT,
-                    env=env,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace"
-                )
+            scripts = [
+                ("scripts/run_collection.py", [target_url] if target_url else []),
+                ("scripts/run_separation.py", []),
+                ("scripts/run_features.py", []),
+                ("scripts/run_inference.py", [])
+            ]
+            
+            for script, args in scripts:
+                f.write(f"\n>>> Running {script}...\n")
+                f.flush()
                 
-                # リアルタイムでファイルに書き出す
-                for line in process.stdout:
-                    f.write(line)
-                    f.flush()
+                cmd = [str(python_exe), script] + args
+                try:
+                    process = subprocess.Popen(
+                        cmd, 
+                        cwd=str(settings.project_root), 
+                        stdout=subprocess.PIPE, 
+                        stderr=subprocess.STDOUT,
+                        env=env,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace"
+                    )
                     
-                process.wait()
-                if process.returncode != 0:
-                    f.write(f"\n[ERROR] Script {script} exited with code {process.returncode}\n")
-                    break # エラーが起きたら後続の処理は止める
-            except Exception as e:
-                f.write(f"\n[CRITICAL ERROR] Failed to run {script}: {e}\n")
-                break
-                
-        f.write("\n=== Pipeline Finished ===\n")
-        f.flush()
+                    # リアルタイムでファイルに書き出す
+                    for line in process.stdout:
+                        f.write(line)
+                        f.flush()
+                        
+                    process.wait()
+                    if process.returncode != 0:
+                        f.write(f"\n[ERROR] Script {script} exited with code {process.returncode}\n")
+                        break # エラーが起きたら後続の処理は止める
+                except Exception as e:
+                    f.write(f"\n[CRITICAL ERROR] Failed to run {script}: {e}\n")
+                    break
+                    
+            f.write("\n=== Pipeline Finished ===\n")
+            f.flush()
+    finally:
+        _is_pipeline_running = False
 
 @app.post("/api/pipeline/start")
 def start_pipeline(req: PipelineRequest, background_tasks: BackgroundTasks):
     """パイプライン処理を開始するエンドポイント"""
+    global _is_pipeline_running
+    if _is_pipeline_running:
+        raise HTTPException(status_code=409, detail="Pipeline is already running.")
+        
     log_dir = Path(settings.project_root) / settings.paths.logs
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "pipeline_current.log"
@@ -165,6 +174,7 @@ def start_pipeline(req: PipelineRequest, background_tasks: BackgroundTasks):
     if log_file.exists():
         log_file.unlink()
         
+    _is_pipeline_running = True
     background_tasks.add_task(run_pipeline_task, req.url, log_file)
     return {"status": "started", "msg": "Pipeline has been started in the background."}
 
@@ -173,7 +183,7 @@ def train_model(background_tasks: BackgroundTasks):
     """人間が付けた正解ラベルをもとに、AI判定モデルを再学習する"""
     import os
     def run_train():
-        python_exe = Path(settings.project_root) / ".venv" / "Scripts" / "python.exe"
+        python_exe = sys.executable
         env = os.environ.copy()
         env["PYTHONPATH"] = str(Path(settings.project_root))
         try:
