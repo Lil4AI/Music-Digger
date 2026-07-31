@@ -54,12 +54,8 @@ def run():
                 probs = predict_genre(track_id)
                 
                 # 確率が高い方をAIラベルとする
-                if probs['tearout'] >= 0.5:
-                    ai_label = 'tearout'
-                    confidence = probs['tearout']
-                else:
-                    ai_label = 'riddim'
-                    confidence = probs['riddim']
+                sorted_genres = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+                ai_label, confidence = sorted_genres[0]
                 
                 now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute(

@@ -60,8 +60,9 @@ class LabelUpdate(BaseModel):
 @app.post("/api/tracks/{track_id}/label")
 def update_track_label(track_id: str, update: LabelUpdate):
     """人間によるラベル（Tear Out / Riddim）を更新"""
-    if update.label.lower() not in ['tearout', 'riddim']:
-        raise HTTPException(status_code=400, detail="Invalid label. Must be 'tearout' or 'riddim'")
+    valid_labels = [g.lower() for g in settings.genre_labels]
+    if update.label.lower() not in valid_labels:
+        raise HTTPException(status_code=400, detail=f"Invalid label. Must be one of {valid_labels}")
         
     with contextlib.closing(get_db_connection()) as conn:
         cursor = conn.cursor()

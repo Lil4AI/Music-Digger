@@ -48,8 +48,12 @@ def load_labeled_dataset():
         X_subbass.append(sb)
         X_other.append(o)
         
-        # ラベルの数値化 (tearout: 1, riddim: 0)
-        y.append(1 if label.lower() == 'tearout' else 0)
+        # ラベルの数値化 (settings.genre_labelsのインデックスに合わせる)
+        genres_lower = [g.lower() for g in settings.genre_labels]
+        if label.lower() in genres_lower:
+            y.append(genres_lower.index(label.lower()))
+        else:
+            y.append(0) # デフォルトフォールバック
         valid_track_ids.append(track_id)
         
     if not valid_track_ids:

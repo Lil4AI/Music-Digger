@@ -36,6 +36,6 @@ def predict_genre(track_id: str) -> dict:
     probs = model.predict_proba(X_dict)[0]
     
     return {
-        "riddim": float(probs[0]),
-        "tearout": float(probs[1])
+        settings.genre_labels[0]: float(probs[0]),
+        settings.genre_labels[1]: float(probs[1])
     }
