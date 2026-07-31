@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 import numpy as np
+import sys
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
@@ -35,7 +36,7 @@ class FeatureFusionPipeline:
         }
         
         if classifier_name == "xgboost":
-            self.base_clf = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+            self.base_clf = XGBClassifier(eval_metric='logloss', random_state=42)
         elif classifier_name == "rf":
             self.base_clf = RandomForestClassifier(n_estimators=100, random_state=42)
         else:
@@ -58,6 +59,17 @@ class FeatureFusionPipeline:
 
     def fit(self, X_dict, y):
         X_concat = self._concat_features(X_dict, fit=True)
+        unique_classes, counts = np.unique(y, return_counts=True)
+        
+        if len(unique_classes) < 2:
+            print("エラー: 学習には最低2つ以上のクラスのデータが必要です。")
+            sys.exit(1)
+            
+        min_class_count = np.min(counts)
+        if min_class_count < 3:
+            logging.warning("Skipped calibration due to small class count")
+            self.clf = self.base_clf
+            
         self.clf.fit(X_concat, y)
         return self
 
@@ -71,10 +83,16 @@ class FeatureFusionPipeline:
 
 def train_and_evaluate():
     X_dict, y, track_ids = load_labeled_dataset()
-    if X_dict is None:
+    if X_dict is None or len(y) == 0:
         logging.error("学習用データが見つかりません。DBに human_label が設定されているか確認してください。")
         print("エラー: 学習データなし")
-        return
+        sys.exit(1)
+
+    unique_classes = np.unique(y)
+    if len(unique_classes) < 2:
+        logging.error("学習には最低2つ以上のクラス（ジャンル）のデータが必要です。")
+        print("エラー: 複数クラスの学習データがありません。")
+        sys.exit(1)
 
     print(f"{len(y)} 件のデータで学習を開始します...")
     logging.info(f"学習開始: {len(y)} samples")
@@ -82,7 +100,7 @@ def train_and_evaluate():
     avg_acc, avg_f1, avg_auc = 0.0, 0.0, 0.0
     
     # 十分なデータがある場合のみ K-Fold CV を実行
-    unique_classes = np.unique(y)
+    # 十分なデータがある場合のみ K-Fold CV を実行
     min_samples_per_class = min([np.sum(y == c) for c in unique_classes]) if len(unique_classes) > 1 else 0
     
     if len(y) >= 10 and len(unique_classes) > 1 and min_samples_per_class >= 5:
@@ -124,7 +142,7 @@ def train_and_evaluate():
 
     # 全データで最終モデルを学習
     final_pipeline = FeatureFusionPipeline(classifier_name="xgboost")
-    if len(y) < 10 or len(unique_classes) < 2:
+    if len(y) < 10:
         final_pipeline.clf = final_pipeline.base_clf
     final_pipeline.fit(X_dict, y)
     
