@@ -20,3 +20,6 @@ fastapi
 uvicorn
 cryptography
 pydantic
+pytest
+pytest-mock
+httpx
