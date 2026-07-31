@@ -7,6 +7,7 @@ Apple MusicのCatalog SearchまたはAudDで照合し、取得できたIDをDB�
 
 import sqlite3
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from tqdm import tqdm
 
@@ -60,9 +61,10 @@ def run():
                 am_id = identify_via_audd(str(raw_audio_path))
                 
             if am_id:
+                now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute(
-                    "UPDATE tracks SET apple_music_id = ? WHERE track_id = ?",
-                    (am_id, track_id)
+                    "UPDATE tracks SET apple_music_id = ?, identified_at = ?, status = 'identified' WHERE track_id = ?",
+                    (am_id, now, track_id)
                 )
                 conn.commit()
                 logging.info(f"Identified {track_id} -> {am_id}")

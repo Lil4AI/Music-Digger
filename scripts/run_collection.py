@@ -8,6 +8,7 @@ SoundCloudのユーザーURLからトラック情報を取得し、
 import sys
 import sqlite3
 import logging
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,7 +45,7 @@ def run(target_url: str):
                 print(f"スキップ: {track['title']} (フィルタ除外)")
                 continue
                 
-            track_id = f"sc_{track['id']}"
+            track_id = hashlib.sha256(track['url'].encode()).hexdigest()[:16]
             
             # 既に存在するかチェック
             cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
@@ -59,9 +60,9 @@ def run(target_url: str):
                 now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 raw_audio_path = str(Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav")
                 cursor.execute(
-                    '''INSERT INTO tracks (track_id, source, source_url, status, raw_audio_path, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?)''',
-                    (track_id, 'soundcloud', track['url'], 'collected', raw_audio_path, now)
+                    '''INSERT INTO tracks (track_id, source, source_url, title, artist, status, raw_audio_path, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (track_id, 'soundcloud', track['url'], track['title'], track.get('user', {}).get('username', 'Unknown Artist'), 'collected', raw_audio_path, now)
                 )
                 conn.commit()
                 print(" -> 完了")

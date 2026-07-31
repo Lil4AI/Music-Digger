@@ -73,7 +73,7 @@ def run():
                 # 成功したらタイムスタンプを更新
                 now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute(
-                    "UPDATE tracks SET features_extracted_at = ? WHERE track_id = ?",
+                    "UPDATE tracks SET features_extracted_at = ?, status = 'features_extracted' WHERE track_id = ?",
                     (now, track_id)
                 )
                 conn.commit()

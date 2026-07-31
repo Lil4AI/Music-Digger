@@ -61,7 +61,7 @@ def run():
                 now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute(
                     '''UPDATE tracks 
-                       SET ai_label = ?, ai_confidence = ?, classified_at = ? 
+                       SET ai_label = ?, ai_confidence = ?, classified_at = ?, status = 'classified' 
                        WHERE track_id = ?''',
                     (ai_label, confidence, now, track_id)
                 )
