@@ -54,6 +54,13 @@ def get_tracks():
         
     return [dict(row) for row in rows]
 
+@app.get("/api/settings")
+def get_settings():
+    """設定情報を取得"""
+    return {
+        "genre_labels": settings.genre_labels
+    }
+
 class LabelUpdate(BaseModel):
     label: str
 

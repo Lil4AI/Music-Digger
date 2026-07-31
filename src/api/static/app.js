@@ -16,11 +16,14 @@ const App = {
     isPlaying: false,
     isSeeking: false,  // guard for sync seek loops
     logInterval: null,
+    genreLabels: [],
 
     /* ── Bootstrap ────────────────────────────────────── */
     async init() {
         this.bindNav();
+        await this.loadSettings();
         this.bindButtons();
+        this.renderLabelingButtons();
         await this.loadTracks();
         console.log('[Music Digger] init OK – tracks:', this.tracks.length);
     },
@@ -42,12 +45,7 @@ const App = {
         const trainBtn = document.getElementById('btn-train-model');
         if (trainBtn) trainBtn.addEventListener('click', () => this.trainModel());
 
-        // Label buttons
-        const tearoutBtn = document.getElementById('btn-tearout');
-        if (tearoutBtn) tearoutBtn.addEventListener('click', () => this.submitLabel('tearout'));
-
-        const riddimBtn = document.getElementById('btn-riddim');
-        if (riddimBtn) riddimBtn.addEventListener('click', () => this.submitLabel('riddim'));
+        // Note: Label buttons are now dynamically generated in renderLabelingButtons()
 
         // Play/pause
         const playBtn = document.getElementById('play-btn');
@@ -59,6 +57,17 @@ const App = {
     },
 
     /* ── Data ─────────────────────────────────────────── */
+    async loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            this.genreLabels = data.genre_labels || [];
+        } catch (e) {
+            console.error('loadSettings failed', e);
+            this.genreLabels = ['tearout', 'riddim']; // fallback
+        }
+    },
+
     async loadTracks() {
         try {
             const res = await fetch('/api/tracks');
@@ -84,13 +93,15 @@ const App = {
             let aiHtml = '-';
             if (t.ai_label && t.ai_confidence != null) {
                 const pct = Math.round(t.ai_confidence * 100);
-                const cls = t.ai_label === 'tearout' ? 'badge-tearout' : 'badge-riddim';
+                const isTarget = this.genreLabels[0] && t.ai_label.toLowerCase() === this.genreLabels[0].toLowerCase();
+                const cls = isTarget ? 'badge-tearout' : 'badge-riddim';
                 aiHtml = `<span class="label-badge ${cls}">${t.ai_label.toUpperCase()} ${pct}%</span>`;
             }
 
             let humanHtml = '-';
             if (t.human_label) {
-                const cls = t.human_label === 'tearout' ? 'badge-tearout' : 'badge-riddim';
+                const isTarget = this.genreLabels[0] && t.human_label.toLowerCase() === this.genreLabels[0].toLowerCase();
+                const cls = isTarget ? 'badge-tearout' : 'badge-riddim';
                 humanHtml = `<span class="label-badge ${cls}">${t.human_label.toUpperCase()}</span>`;
             }
 
@@ -122,7 +133,8 @@ const App = {
         if (track && track.ai_label) {
             const pct = Math.round((track.ai_confidence || 0) * 100);
             aiBadge.textContent = `AI: ${track.ai_label.toUpperCase()} (${pct}%)`;
-            aiBadge.className = 'label-badge ' + (track.ai_label === 'tearout' ? 'badge-tearout' : 'badge-riddim');
+            const isTarget = this.genreLabels[0] && track.ai_label.toLowerCase() === this.genreLabels[0].toLowerCase();
+            aiBadge.className = 'label-badge ' + (isTarget ? 'badge-tearout' : 'badge-riddim');
         } else {
             aiBadge.textContent = 'AI: Not classified yet';
             aiBadge.className = 'label-badge badge-neutral';
@@ -212,6 +224,24 @@ const App = {
     },
 
     /* ── Label Submit ─────────────────────────────────── */
+    renderLabelingButtons() {
+        const container = document.getElementById('labeling-actions');
+        if (!container) return;
+        container.innerHTML = '';
+        this.genreLabels.forEach((genre, idx) => {
+            const btn = document.createElement('button');
+            // Class index 0: btn-primary (high priority equivalent), index 1: btn-secondary (second class)
+            btn.className = `btn ${idx === 0 ? 'btn-primary btn-tearout' : 'btn-secondary btn-riddim'}`;
+            btn.id = `btn-${genre}`;
+            btn.innerHTML = `
+                <span class="glow"></span>
+                <span class="btn-text">${genre.toUpperCase()}</span>
+            `;
+            btn.addEventListener('click', () => this.submitLabel(genre));
+            container.appendChild(btn);
+        });
+    },
+
     async submitLabel(label) {
         if (!this.currentTrackId) { alert('Select a track first.'); return; }
         try {
