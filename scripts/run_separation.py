@@ -8,6 +8,7 @@ DBから separated_at IS NULL の track を全件取得し、
 import sqlite3
 import logging
 import traceback
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from tqdm import tqdm
@@ -40,6 +41,7 @@ def run():
             return
             
         print(f"{len(rows)} 件のトラックを分離します...")
+        success_count = 0
         
         for row in tqdm(rows, desc="Stem Separation"):
             track_id = row['track_id']
@@ -56,6 +58,7 @@ def run():
                     (now, track_id)
                 )
                 conn.commit()
+                success_count += 1
                 
             except Exception as e:
                 # 失敗時はログに記録してスキップ
@@ -63,6 +66,9 @@ def run():
                 logging.error(error_msg)
                 
         print("処理が完了しました。")
+        if success_count == 0:
+            print("エラー: すべてのトラックの分離に失敗しました。")
+            sys.exit(1)
 
 if __name__ == "__main__":
     run()

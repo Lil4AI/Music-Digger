@@ -13,7 +13,7 @@ def extract_drums_features(wav_path: str) -> np.ndarray:
     onset_env = librosa.onset.onset_strength(y=y, sr=sr)
     
     # テンポ推定
-    tempo = librosa.feature.rhythm.tempo(onset_envelope=onset_env, sr=sr)
+    tempo = librosa.feature.tempo(onset_envelope=onset_env, sr=sr)
     tempo_val = float(tempo[0]) if len(tempo) > 0 else 0.0
     
     # オンセット密度（1秒あたりのオンセット数）
