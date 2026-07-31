@@ -26,7 +26,11 @@ project/
     models/                # 分類モデル学習・推論
     identify/              # Apple Music楽曲照合
     sync/                  # Apple Musicプレイリスト同期
+    api/                   # FastAPI バックエンドサーバー
+  tests/                   # Pytest テストスイート
   scripts/                 # CLI実行スクリプト
+  run_pipeline.bat         # パイプライン一括実行用バッチ
+  run_tests.bat            # テストスイート一括実行用バッチ
   CONTRACTS.md             # 全モジュール共有の契約（唯一の正）
   requirements.txt         # Python依存パッケージ
   .env.example             # シークレット変数テンプレート
@@ -78,9 +82,38 @@ cp .env.example .env
 > CONTRACTS.md が全モジュール共有の唯一の正であり、ディレクトリ構成・命名規則・
 > DBスキーマ・運用ルールはすべてこのファイルに従う。
 
-## パイプライン実行順序
+## 実行方法
 
-完成後は以下の順でスクリプトを実行する（cron等での定期実行を想定）:
+当システムは、手動でのスクリプト実行、一括バッチ実行、およびAPIサーバー経由での実行をサポートしています。
+
+### 1. APIサーバーとしての実行（推奨）
+
+ダッシュボードUIやブラウザからシステムを操作するためのバックエンドサーバーです。
+
+```bash
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+起動後、ブラウザで `http://localhost:8000` にアクセスしてください。
+
+### 2. パイプラインの一括実行（CLI）
+
+URLを指定して、全6ステップの処理を自動で順次実行するバッチファイルです。
+
+```powershell
+.\run_pipeline.bat "https://soundcloud.com/dj-name/sets/playlist-url"
+```
+
+### 3. テストの実行
+
+プロジェクト全体の正常性を確認するためのテストスイートです（約10秒で完了します）。
+
+```powershell
+.\run_tests.bat
+```
+
+### （参考）手動での各ステップ実行
+
+個別にモジュールを動かしたい場合は、以下の順でスクリプトを実行します。
 
 1. `python scripts/run_collection.py` — SoundCloudからトラック収集
 2. `python scripts/run_separation.py` — ステム分離

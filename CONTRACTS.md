@@ -39,6 +39,10 @@ tracks(
   identified_at TIMESTAMP,
   sync_status TEXT,
   synced_at TIMESTAMP,
+  status TEXT,
+  ai_label TEXT,
+  ai_confidence REAL,
+  human_label TEXT,
   created_at TIMESTAMP
 )
 genre_probabilities(
