@@ -4,9 +4,8 @@ echo =========================================
 echo Music Digger Pipeline
 echo =========================================
 echo.
-echo 分析したいSoundCloudのURL（曲やプレイリスト）があれば
-echo 下に貼り付けてEnterを押してください。
-echo （何も入力せずにEnterを押すと、テスト用に自動で処理されます）
+echo If you have a SoundCloud URL to analyze, paste it below.
+echo (Press Enter without typing anything to run a test track)
 echo.
 set /p TARGET_URL="URL: "
 
