@@ -7,6 +7,8 @@ DB上の classified_at IS NULL (または human_label IS NULL) かつ
 
 import sqlite3
 import logging
+import traceback
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from tqdm import tqdm
@@ -43,7 +45,8 @@ def run():
             print("推論対象のトラックはありません。")
             return
             
-        print(f"{len(rows)} 件のトラックのジャンル推論を開始します...")
+        print(f"{len(rows)} 件のトラックを推論します...")
+        success_count = 0
         
         for row in tqdm(rows, desc="Inference"):
             track_id = row['track_id']
@@ -66,11 +69,15 @@ def run():
                     (ai_label, confidence, now, track_id)
                 )
                 conn.commit()
+                success_count += 1
                 
             except Exception as e:
                 logging.error(f"Track {track_id} の推論に失敗: {e}")
                 
-        print("推論が完了しました。")
+        print("処理が完了しました。")
+        if success_count == 0:
+            print("エラー: すべてのトラックの推論に失敗しました。")
+            sys.exit(1)
 
 if __name__ == "__main__":
     run()

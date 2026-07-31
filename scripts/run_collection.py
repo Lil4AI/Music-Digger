@@ -32,12 +32,14 @@ def run(target_url: str):
     
     if not candidates:
         print("トラックが見つかりませんでした。")
-        return
+        sys.exit(1)
         
     print(f"{len(candidates)} 件の候補が見つかりました。")
     
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
+        success_count = 0
+        attempt_count = 0
         
         for track in candidates:
             # 事前フィルタ
@@ -53,6 +55,7 @@ def run(target_url: str):
                 print(f"スキップ: {track['title']} (既に存在)")
                 continue
                 
+            attempt_count += 1
             print(f"ダウンロード開始: {track['title']}")
             success = download_track(track['url'], track_id)
             
@@ -67,8 +70,13 @@ def run(target_url: str):
                 conn.commit()
                 print(" -> 完了")
                 logging.info(f"Collected track: {track_id} - {track['title']}")
+                success_count += 1
             else:
                 print(" -> 失敗")
+
+        if attempt_count > 0 and success_count == 0:
+            print("エラー: すべてのトラックの収集に失敗しました。")
+            sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

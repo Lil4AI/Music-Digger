@@ -9,6 +9,7 @@ DBから separated_at IS NOT NULL AND features_extracted_at IS NULL の track �
 import sqlite3
 import logging
 import traceback
+import sys
 import numpy as np
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,7 @@ def run():
             return
             
         print(f"{len(rows)} 件のトラックの特徴量を抽出します...")
+        success_count = 0
         
         for row in tqdm(rows, desc="Feature Extraction"):
             track_id = row['track_id']
@@ -77,12 +79,16 @@ def run():
                     (now, track_id)
                 )
                 conn.commit()
+                success_count += 1
                 
             except Exception as e:
                 error_msg = f"Track {track_id} の特徴量抽出に失敗しました: {str(e)}\n{traceback.format_exc()}"
                 logging.error(error_msg)
                 
         print("処理が完了しました。")
+        if success_count == 0:
+            print("エラー: すべてのトラックの特徴量抽出に失敗しました。")
+            sys.exit(1)
 
 if __name__ == "__main__":
     run()
