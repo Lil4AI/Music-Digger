@@ -1,5 +1,6 @@
 import yt_dlp
 import logging
+import re
 from pathlib import Path
 from src.config import settings
 
@@ -51,9 +52,9 @@ def passes_prefilter(track_meta: dict) -> bool:
     if duration > 600:
         return False
         
-    # キーワード除外
-    exclude_keywords = ['mix', 'podcast', 'guest', 'b2b', 'set']
-    if any(keyword in title for keyword in exclude_keywords):
+    # キーワード除外 (単語境界を使用して "Sunset" のような誤爆を防ぐ)
+    exclude_pattern = r'\b(mix|podcast|guest|b2b|set)\b'
+    if re.search(exclude_pattern, title):
         return False
         
     return True
