@@ -24,11 +24,11 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def run(target_url: str):
+def run(target_url: str, max_downloads: int = 10):
     db_path = Path(settings.project_root) / settings.paths.db / "edm_classifier.db"
     
-    print(f"URLからトラックを取得中: {target_url}")
-    candidates = fetch_candidate_tracks(target_url, max_downloads=10)
+    print(f"URLからトラックを取得中: {target_url} (最大取得件数: {max_downloads})")
+    candidates = fetch_candidate_tracks(target_url, max_downloads=max_downloads)
     
     if not candidates:
         print("トラックが見つかりませんでした。")
@@ -79,10 +79,10 @@ def run(target_url: str):
             sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        target = sys.argv[1]
-    else:
-        # デフォルトのテスト用URL (例: 特定のアーティスト)
-        target = "https://soundcloud.com/skrillex"
+    import argparse
+    parser = argparse.ArgumentParser(description="SoundCloudから楽曲を収集・ダウンロードします")
+    parser.add_argument("url", type=str, nargs="?", default="https://soundcloud.com/skrillex", help="収集対象のSoundCloud URL")
+    parser.add_argument("--max-downloads", type=int, default=10, help="最大ダウンロード件数 (デフォルト: 10)")
     
-    run(target)
+    args = parser.parse_args()
+    run(args.url, max_downloads=args.max_downloads)
