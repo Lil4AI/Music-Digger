@@ -4,17 +4,22 @@ echo =========================================
 echo Music Digger Pipeline
 echo =========================================
 echo.
-echo If you have a SoundCloud URL to analyze, paste it below.
-echo (Press Enter without typing anything to run a test track)
-echo.
-set /p TARGET_URL="URL: "
-
-echo.
-echo [1/6] Running Collection...
-if "%TARGET_URL%"=="" (
-    .\.venv\Scripts\python.exe scripts\run_collection.py
+if not "%~1"=="" (
+    echo [1/6] Running Collection...
+    .\.venv\Scripts\python.exe scripts\run_collection.py %*
 ) else (
-    .\.venv\Scripts\python.exe scripts\run_collection.py "%TARGET_URL%"
+    echo If you have a SoundCloud URL to analyze, paste it below.
+    echo (Press Enter without typing anything to run a test track)
+    echo.
+    set /p TARGET_URL="URL: "
+    
+    echo.
+    echo [1/6] Running Collection...
+    if "%TARGET_URL%"=="" (
+        .\.venv\Scripts\python.exe scripts\run_collection.py
+    ) else (
+        .\.venv\Scripts\python.exe scripts\run_collection.py "%TARGET_URL%"
+    )
 )
 if %errorlevel% neq 0 (
     echo [ERROR] Collection failed.
