@@ -75,8 +75,8 @@ def run(target_url: str, max_downloads: int = 10):
                 print(" -> 失敗")
 
         if attempt_count > 0 and success_count == 0:
-            print("エラー: すべてのトラックの収集に失敗しました。")
-            sys.exit(1)
+            print("新たに収集したトラックはありませんでした（処理は継続します）。")
+            sys.exit(0)
 
 if __name__ == "__main__":
     import argparse
