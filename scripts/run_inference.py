@@ -58,12 +58,24 @@ def run():
                 ai_label, confidence = sorted_genres[0]
                 
                 now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # トラック本体の更新
                 cursor.execute(
                     '''UPDATE tracks 
                        SET ai_label = ?, ai_confidence = ?, classified_at = ?, status = 'classified' 
                        WHERE track_id = ?''',
                     (ai_label, confidence, now, track_id)
                 )
+                
+                # 全ジャンルの確率を genre_probabilities テーブルに保存
+                for genre_label, prob in probs.items():
+                    cursor.execute(
+                        '''INSERT INTO genre_probabilities 
+                           (track_id, genre_label, probability, model_version, created_at)
+                           VALUES (?, ?, ?, ?, ?)''',
+                        (track_id, genre_label, prob, settings.model_version, now)
+                    )
+                    
                 conn.commit()
                 success_count += 1
                 

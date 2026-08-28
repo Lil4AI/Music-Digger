@@ -40,8 +40,15 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
+echo [3/7] Running Encoding to MP3...
+.\.venv\Scripts\python.exe scripts\run_encode.py
+if %errorlevel% neq 0 (
+    echo [ERROR] MP3 Encoding failed.
+    exit /b %errorlevel%
+)
+
 echo.
-echo [3/6] Running Feature Extraction...
+echo [4/7] Running Feature Extraction...
 .\.venv\Scripts\python.exe scripts\run_features.py
 if %errorlevel% neq 0 (
     echo [ERROR] Feature Extraction failed.

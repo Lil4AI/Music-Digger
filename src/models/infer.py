@@ -32,10 +32,11 @@ def predict_genre(track_id: str) -> dict:
         
     model = get_model()
     
-    # 確率を予測 [riddim(0)の確率, tearout(1)の確率]
+    # 確率を予測
     probs = model.predict_proba(X_dict)[0]
     
-    return {
-        settings.genre_labels[0]: float(probs[0]),
-        settings.genre_labels[1]: float(probs[1])
-    }
+    # 学習済みモデルが保持しているクラスラベル（model.clf.classes_）を取得
+    # なければ設定ファイル（settings.genre_labels）をフォールバックとして使用
+    classes = model.clf.classes_ if hasattr(model, 'clf') and hasattr(model.clf, 'classes_') else settings.genre_labels
+    
+    return {str(cls): float(prob) for cls, prob in zip(classes, probs)}

@@ -23,6 +23,7 @@ paths:
   stems: "data/stems"
   features: "data/features"
   labels: "data/labels"
+  web_audio: "data/web_audio"
   db: "db"
   models: "models"
   logs: "logs"

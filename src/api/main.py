@@ -90,20 +90,21 @@ def update_track_label(track_id: str, update: LabelUpdate):
 @app.get("/api/audio/{track_id}/{stem}")
 def get_audio_file(track_id: str, stem: str):
     """
-    指定されたトラックの特定のステム(wav)をストリーム配信する。
+    指定されたトラックの特定のステム(mp3)をストリーム配信する。
     stem: raw, drums, bass, subbass, other
     """
     if stem == "raw":
-        audio_path = Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav"
+        audio_path = Path(settings.project_root) / settings.paths.web_audio / "raw" / f"{track_id}.mp3"
     elif stem in ["drums", "bass", "subbass", "other"]:
-        audio_path = Path(settings.project_root) / settings.paths.stems / track_id / f"{stem}.wav"
+        audio_path = Path(settings.project_root) / settings.paths.web_audio / "stems" / track_id / f"{stem}.mp3"
     else:
         raise HTTPException(status_code=400, detail="Invalid stem type")
         
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
         
-    return FileResponse(str(audio_path), media_type="audio/wav")
+    # FileResponse は標準で Range アクセス (206 Partial Content) をサポートしています
+    return FileResponse(str(audio_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
 
 class PipelineRequest(BaseModel):
     url: str = ""
@@ -128,6 +129,7 @@ def run_pipeline_task(target_url: str, log_file: Path):
             scripts = [
                 ("scripts/run_collection.py", [target_url] if target_url else []),
                 ("scripts/run_separation.py", []),
+                ("scripts/run_encode.py", []),
                 ("scripts/run_features.py", []),
                 ("scripts/run_inference.py", [])
             ]
