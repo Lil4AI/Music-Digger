@@ -1,7 +1,7 @@
 # Seed DJリスト — 収集対象のSoundCloudプロフィールURL
 # フォーマット: ジャンルラベル|SoundCloud URL
 # 「#」で始まる行はコメント
-# クロスオーバーアーティスト（複数ジャンルを行き来する）は入れないこと
+# ジャンルの最終判定はラベリングUIで手動で行う（ここはあくまでヒント）
 
 # ──────────────────────────────────────────
 # heavy_dubstep（Brostep / ヘビーダブステップ）
@@ -12,6 +12,7 @@ heavy_dubstep|https://soundcloud.com/flux-pavilion
 heavy_dubstep|https://soundcloud.com/doctor-p
 heavy_dubstep|https://soundcloud.com/barely-alive
 heavy_dubstep|https://soundcloud.com/datsik
+heavy_dubstep|https://soundcloud.com/subtronics
 
 # ──────────────────────────────────────────
 # color_bass（Colour Bass / Rushdown系）
@@ -31,6 +32,7 @@ riddim|https://soundcloud.com/ubur
 riddim|https://soundcloud.com/ganja-white-night
 riddim|https://soundcloud.com/pixel-terror
 riddim|https://soundcloud.com/must-die
+riddim|https://soundcloud.com/holmusic
 
 # ──────────────────────────────────────────
 # bass_house（4つ打ちキック＋うねるベース）
@@ -41,6 +43,7 @@ bass_house|https://soundcloud.com/chrislorenzo
 bass_house|https://soundcloud.com/habstrakt
 bass_house|https://soundcloud.com/dr-fresch
 bass_house|https://soundcloud.com/walker-royce
+bass_house|https://soundcloud.com/knock2
 
 # ──────────────────────────────────────────
 # future_bass（浮遊感のあるコードシンセ系）
@@ -73,11 +76,13 @@ drum_and_bass|https://soundcloud.com/dimension-official
 drum_and_bass|https://soundcloud.com/wilkinsonmusic
 
 # ──────────────────────────────────────────
-# festival_trap（トラップリズム＋アンセム系）
+# trap（フェスティバル〜ダークトラップ全般）
 # ──────────────────────────────────────────
-festival_trap|https://soundcloud.com/rlgrime
-festival_trap|https://soundcloud.com/baauer
-festival_trap|https://soundcloud.com/troyboi
-festival_trap|https://soundcloud.com/bro-safari
-festival_trap|https://soundcloud.com/uz-music
-festival_trap|https://soundcloud.com/flosstradamus
+trap|https://soundcloud.com/rlgrime
+trap|https://soundcloud.com/baauer
+trap|https://soundcloud.com/troyboi
+trap|https://soundcloud.com/bro-safari
+trap|https://soundcloud.com/uz-music
+trap|https://soundcloud.com/flosstradamus
+trap|https://soundcloud.com/isoxo
+trap|https://soundcloud.com/juelzmusic

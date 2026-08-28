@@ -93,10 +93,10 @@ def collect_from_artist(genre: str, artist_url: str, max_downloads: int,
                 cursor.execute(
                     """INSERT INTO tracks
                        (track_id, source, source_url, title, artist,
-                        status, raw_audio_path, human_label, created_at)
+                        status, raw_audio_path, genre_hint, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (track_id, "soundcloud", track["url"], track["title"],
-                     artist_name, "collected", raw_path, genre, now),
+                     artist_name, "collected", raw_path, f"Seed: {genre}", now),
                 )
                 conn.commit()
                 print("✅")
