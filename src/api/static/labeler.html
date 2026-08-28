@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Digger — ラベリング</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #12121a;
+      --surface2:  #1a1a28;
+      --border:    rgba(255,255,255,0.07);
+      --accent:    #7c5cfc;
+      --accent2:   #fc5c8a;
+      --text:      #e8e8f0;
+      --muted:     #6b6b8a;
+      --skip:      #2a2a3a;
+      --success:   #22d3a0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ─── ヘッダー ─── */
+    header {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .progress-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .progress-bar-bg {
+      width: 160px;
+      height: 4px;
+      background: var(--surface2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    /* ─── カード ─── */
+    #card-area {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px 32px;
+      margin-bottom: 20px;
+      animation: cardIn 0.25s ease;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .track-artist {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .track-title {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .sc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 20px;
+      transition: opacity 0.15s;
+    }
+    .sc-link:hover { opacity: 0.75; }
+
+    /* ─── ヒントボックス ─── */
+    .hint-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 8px;
+    }
+    .hint-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .hint-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .hint-text.none { font-style: italic; }
+
+    /* ─── キーボードガイド ─── */
+    .key-guide {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 0.03em;
+    }
+    kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: inherit;
+      font-size: 11px;
+    }
+
+    /* ─── ジャンルグリッド ─── */
+    .genre-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 520px) {
+      .genre-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .genre-btn {
+      position: relative;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .genre-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(124, 92, 252, 0.35);
+    }
+    .genre-btn:active { transform: translateY(0); }
+    .genre-btn .key-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--bg);
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+    .genre-btn .emoji {
+      font-size: 20px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .genre-btn.pressed {
+      background: var(--success);
+      border-color: var(--success);
+      transform: scale(0.97);
+    }
+
+    /* ─── アクションバー ─── */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-skip {
+      flex: 1;
+      padding: 14px;
+      background: var(--skip);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-skip:hover { background: #333; color: var(--text); }
+
+    /* ─── 完了 ─── */
+    #done-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 20px;
+      text-align: center;
+    }
+    .done-emoji { font-size: 72px; }
+    .done-title { font-size: 28px; font-weight: 800; }
+    .done-sub   { font-size: 15px; color: var(--muted); line-height: 1.7; }
+
+    /* ─── ローディング ─── */
+    #loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      flex-direction: column;
+      gap: 16px;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--surface2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #000;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎵 Music Digger</div>
+  <div class="progress-wrap">
+    <div class="progress-label" id="progress-label">読み込み中...</div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+    </div>
+  </div>
+</header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>読み込み中...</span>
+</div>
+
+<div id="card-area" style="display:none">
+  <div class="card">
+    <div class="track-artist" id="track-artist">—</div>
+    <div class="track-title"  id="track-title">—</div>
+    <a class="sc-link" id="sc-link" href="#" target="_blank" rel="noopener">
+      ↗ SoundCloudで聴く
+    </a>
+    <div class="hint-box">
+      <div class="hint-label">💡 ジャンルヒント（Last.fm）</div>
+      <div class="hint-text" id="hint-text">取得中...</div>
+    </div>
+  </div>
+
+  <div class="key-guide">
+    <kbd>1</kbd>〜<kbd>8</kbd> でジャンル選択 &nbsp;|&nbsp; <kbd>S</kbd> スキップ
+  </div>
+
+  <div class="genre-grid" id="genre-grid">
+    <!-- JSで生成 -->
+  </div>
+
+  <div class="action-bar">
+    <button class="btn-skip" id="btn-skip" onclick="skipCurrent()">
+      ⏭ スキップ（判断できない）
+    </button>
+  </div>
+</div>
+
+<div id="done-screen">
+  <div class="done-emoji">🎉</div>
+  <div class="done-title">全曲ラベル付け完了！</div>
+  <div class="done-sub">
+    学習データの準備ができました。<br>
+    ダッシュボードから「モデルを学習」を実行してください。
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const GENRE_EMOJIS = {
+    heavy_dubstep:    '💥',
+    color_bass:       '🎨',
+    riddim:           '🔁',
+    bass_house:       '🏠',
+    future_bass:      '🌊',
+    progressive_house:'🏟',
+    drum_and_bass:    '🥁',
+    festival_trap:    '🎪',
+  };
+
+  const GENRE_LABELS_JP = {
+    heavy_dubstep:    'Heavy\nDubstep',
+    color_bass:       'Color\nBass',
+    riddim:           'Riddim',
+    bass_house:       'Bass\nHouse',
+    future_bass:      'Future\nBass',
+    progressive_house:'Prog.\nHouse',
+    drum_and_bass:    'D&B',
+    festival_trap:    'Festival\nTrap',
+  };
+
+  let currentTrackId = null;
+  let genreLabels = [];
+  let totalLabeled = 0;
+  let totalRemaining = 0;
+
+  // ─── 初期化 ───
+  async function loadNext() {
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('card-area').style.display = 'none';
+    document.getElementById('done-screen').style.display = 'none';
+
+    try {
+      const res  = await fetch('/api/labeling/next');
+      const data = await res.json();
+
+      if (data.done) {
+        showDone(data.labeled);
+        return;
+      }
+
+      genreLabels    = data.genre_labels;
+      totalLabeled   = data.labeled;
+      totalRemaining = data.remaining;
+
+      renderCard(data.track);
+      renderGenreGrid(data.genre_labels);
+      updateProgress(data.labeled, data.remaining);
+    } catch(e) {
+      console.error(e);
+      alert('APIへの接続に失敗しました。サーバーが起動しているか確認してください。');
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('card-area').style.display = 'block';
+  }
+
+  // ─── カード描画 ───
+  function renderCard(track) {
+    currentTrackId = track.track_id;
+    document.getElementById('track-artist').textContent = track.artist || '不明なアーティスト';
+    document.getElementById('track-title').textContent  = track.title  || '不明なトラック';
+
+    const link = document.getElementById('sc-link');
+    if (track.source_url) {
+      link.href = track.source_url;
+      link.style.display = 'inline-flex';
+    } else {
+      link.style.display = 'none';
+    }
+
+    const hint = document.getElementById('hint-text');
+    if (track.genre_hint) {
+      hint.textContent = track.genre_hint;
+      hint.classList.remove('none');
+    } else {
+      hint.textContent = 'ヒントなし（Last.fm未登録の可能性あり）';
+      hint.classList.add('none');
+    }
+  }
+
+  // ─── ジャンルボタン描画 ───
+  function renderGenreGrid(labels) {
+    const grid = document.getElementById('genre-grid');
+    grid.innerHTML = '';
+    labels.forEach((label, i) => {
+      const emoji = GENRE_EMOJIS[label] || '🎵';
+      const jp    = GENRE_LABELS_JP[label] || label;
+      const btn = document.createElement('button');
+      btn.className = 'genre-btn';
+      btn.id = `genre-btn-${i}`;
+      btn.innerHTML = `
+        <span class="key-badge">${i + 1}</span>
+        <span class="emoji">${emoji}</span>
+        ${jp.replace('\n','<br>')}
+      `;
+      btn.onclick = () => applyLabel(label, i);
+      grid.appendChild(btn);
+    });
+  }
+
+  // ─── ラベル適用 ───
+  async function applyLabel(label, btnIndex) {
+    if (!currentTrackId) return;
+    const btn = document.getElementById(`genre-btn-${btnIndex}`);
+    btn.classList.add('pressed');
+
+    try {
+      await fetch(`/api/tracks/${currentTrackId}/label`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label })
+      });
+      showToast(`✅ ${label}`);
+      setTimeout(loadNext, 180);
+    } catch(e) {
+      btn.classList.remove('pressed');
+      alert('ラベルの保存に失敗しました。');
+    }
+  }
+
+  // ─── スキップ ───
+  async function skipCurrent() {
+    if (!currentTrackId) return;
+    try {
+      await fetch(`/api/labeling/skip/${currentTrackId}`, { method: 'POST' });
+      showToast('⏭ スキップ');
+      loadNext();
+    } catch(e) {
+      alert('スキップの処理に失敗しました。');
+    }
+  }
+
+  // ─── 進捗更新 ───
+  function updateProgress(labeled, remaining) {
+    const total = labeled + remaining;
+    const pct   = total > 0 ? Math.round((labeled / total) * 100) : 0;
+    document.getElementById('progress-label').textContent = `${labeled} / ${total} 件完了`;
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  // ─── 完了画面 ───
+  function showDone(labeled) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('card-area').style.display = 'none';
+    document.getElementById('done-screen').style.display = 'flex';
+    document.getElementById('progress-label').textContent = `${labeled} 件完了`;
+    document.getElementById('progress-bar').style.width = '100%';
+  }
+
+  // ─── トースト ───
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1200);
+  }
+
+  // ─── キーボードショートカット ───
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const key = e.key.toLowerCase();
+
+    // 1〜8 でジャンル選択
+    const num = parseInt(e.key);
+    if (!isNaN(num) && num >= 1 && num <= genreLabels.length) {
+      e.preventDefault();
+      applyLabel(genreLabels[num - 1], num - 1);
+      return;
+    }
+
+    // S でスキップ
+    if (key === 's') {
+      e.preventDefault();
+      skipCurrent();
+    }
+  });
+
+  // ─── 起動 ───
+  loadNext();
+</script>
+</body>
+</html>

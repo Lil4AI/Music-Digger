@@ -31,6 +31,20 @@ def init_db():
     try:
         conn.executescript(schema_sql)
         conn.commit()
+
+        # スキーマ更新時に既存DBへ新列を追加するマイグレーション
+        # ALTER TABLE IF NOT EXISTS はSQLiteで非対応のため try/except で対応
+        migrations = [
+            "ALTER TABLE tracks ADD COLUMN genre_hint TEXT",
+            "ALTER TABLE tracks ADD COLUMN researched_at TIMESTAMP",
+        ]
+        for sql in migrations:
+            try:
+                conn.execute(sql)
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # 既に存在する列はスキップ
+
         print(f"データベースを初期化しました: {db_path}")
     except sqlite3.Error as e:
         print(f"DB初期化エラー: {e}")

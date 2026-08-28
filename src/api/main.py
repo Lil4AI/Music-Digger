@@ -87,6 +87,73 @@ def update_track_label(track_id: str, update: LabelUpdate):
     
     return {"status": "success", "track_id": track_id, "human_label": update.label.lower()}
 
+
+@app.get("/api/labeling/next")
+def get_next_for_labeling():
+    """
+    ラベル未付け（human_label IS NULL）のトラックを1件返す。
+    Tinder風ラベリングUIが呼び出すエンドポイント。
+    """
+    with contextlib.closing(get_db_connection()) as conn:
+        cursor = conn.cursor()
+
+        # 未ラベル件数を取得（進捗表示用）
+        cursor.execute(
+            "SELECT COUNT(*) FROM tracks WHERE human_label IS NULL"
+        )
+        unlabeled_count = cursor.fetchone()[0]
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM tracks WHERE human_label IS NOT NULL"
+        )
+        labeled_count = cursor.fetchone()[0]
+
+        # 次の未ラベルトラックを取得
+        cursor.execute("""
+            SELECT track_id, title, artist, source_url, genre_hint
+            FROM tracks
+            WHERE human_label IS NULL
+            ORDER BY created_at ASC
+            LIMIT 1
+        """)
+        row = cursor.fetchone()
+
+    if not row:
+        return {"done": True, "labeled": labeled_count, "remaining": 0}
+
+    return {
+        "done": False,
+        "track": dict(row),
+        "labeled": labeled_count,
+        "remaining": unlabeled_count,
+        "genre_labels": settings.genre_labels,
+    }
+
+
+@app.post("/api/labeling/skip/{track_id}")
+def skip_track(track_id: str):
+    """
+    指定トラックをスキップ扱いにする（human_label = '_skip'）。
+    学習データから除外され、ラベリングUIでは次の曲に進む。
+    """
+    with contextlib.closing(get_db_connection()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE tracks SET human_label = '_skip' WHERE track_id = ?",
+            (track_id,)
+        )
+        conn.commit()
+    return {"status": "skipped", "track_id": track_id}
+
+
+@app.get("/labeler")
+def labeler_page():
+    """Tinder風ラベリングUIページを返す"""
+    labeler_path = static_dir / "labeler.html"
+    if not labeler_path.exists():
+        return HTMLResponse("<h1>labeler.html not found</h1>", status_code=404)
+    return FileResponse(str(labeler_path), media_type="text/html")
+
 @app.get("/api/audio/{track_id}/{stem}")
 def get_audio_file(track_id: str, stem: str):
     """

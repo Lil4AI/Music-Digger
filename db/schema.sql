@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS tracks (
     ai_label              TEXT,
     ai_confidence         REAL,
     human_label           TEXT,
+    genre_hint            TEXT,
+    researched_at         TIMESTAMP,
     created_at            TIMESTAMP
 );
 

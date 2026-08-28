@@ -43,6 +43,8 @@ tracks(
   ai_label TEXT,
   ai_confidence REAL,
   human_label TEXT,
+  genre_hint TEXT,        # run_genre_research.pyが書き込むリサーチ結果テキスト
+  researched_at TIMESTAMP,
   created_at TIMESTAMP
 )
 genre_probabilities(
@@ -61,6 +63,7 @@ APPLE_MUSIC_TEAM_ID
 APPLE_MUSIC_KEY_ID
 APPLE_MUSIC_PRIVATE_KEY_PATH
 AUDD_API_KEY
+LASTFM_API_KEY
 
 ## 運用ルール
 - 新しいテーブル列・新しいファイル形式が必要になったら、実装前に必ず
