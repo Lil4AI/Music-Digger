@@ -16,7 +16,7 @@ def load_labeled_dataset():
     db_path = Path(settings.project_root) / settings.paths.db / "edm_classifier.db"
     
     with sqlite3.connect(str(db_path)) as conn:
-        df = pd.read_sql("SELECT track_id, human_label FROM tracks WHERE human_label IS NOT NULL", conn)
+        df = pd.read_sql("SELECT track_id, human_label FROM tracks WHERE human_label IS NOT NULL AND human_label != '_skip'", conn)
         
     if df.empty:
         return None, None, None
@@ -28,10 +28,15 @@ def load_labeled_dataset():
     y = []
     valid_track_ids = []
     
+    genres_lower = [g.lower() for g in settings.genre_labels]
+
     for _, row in df.iterrows():
         track_id = row['track_id']
-        label = row['human_label']
+        label = str(row['human_label']).lower()
         
+        if label not in genres_lower:
+            continue
+
         feat_dir = Path(settings.project_root) / settings.paths.features / track_id
         
         try:
@@ -48,12 +53,7 @@ def load_labeled_dataset():
         X_subbass.append(sb)
         X_other.append(o)
         
-        # ラベルの数値化 (settings.genre_labelsのインデックスに合わせる)
-        genres_lower = [g.lower() for g in settings.genre_labels]
-        if label.lower() in genres_lower:
-            y.append(genres_lower.index(label.lower()))
-        else:
-            y.append(0) # デフォルトフォールバック
+        y.append(genres_lower.index(label))
         valid_track_ids.append(track_id)
         
     if not valid_track_ids:

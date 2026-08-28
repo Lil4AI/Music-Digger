@@ -60,6 +60,7 @@ def _load_settings() -> SimpleNamespace:
         apple_music_key_id=os.getenv("APPLE_MUSIC_KEY_ID", ""),
         apple_music_private_key_path=os.getenv("APPLE_MUSIC_PRIVATE_KEY_PATH", ""),
         audd_api_key=os.getenv("AUDD_API_KEY", ""),
+        lastfm_api_key=os.getenv("LASTFM_API_KEY", ""),
     )
 
     return cfg

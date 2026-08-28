@@ -53,7 +53,9 @@ def fetch_lastfm_tags(artist: str, title: str, api_key: str) -> list[str]:
 
         track_data = data.get("track", {})
         tags_data = track_data.get("toptags", {}).get("tag", [])
-        tags = [t["name"] for t in tags_data if isinstance(t, dict)]
+        if isinstance(tags_data, dict):
+            tags_data = [tags_data]
+        tags = [t["name"] for t in tags_data if isinstance(t, dict) and "name" in t]
         return tags[:10]  # 上位10タグ
     except Exception as e:
         logging.warning(f"Last.fm fetch failed for '{artist} - {title}': {e}")
@@ -77,7 +79,9 @@ def fetch_lastfm_artist_tags(artist: str, api_key: str) -> list[str]:
             data = json.loads(resp.read().decode())
 
         tags_data = data.get("artist", {}).get("tags", {}).get("tag", [])
-        tags = [t["name"] for t in tags_data if isinstance(t, dict)]
+        if isinstance(tags_data, dict):
+            tags_data = [tags_data]
+        tags = [t["name"] for t in tags_data if isinstance(t, dict) and "name" in t]
         return tags[:5]
     except Exception as e:
         logging.warning(f"Last.fm artist fetch failed for '{artist}': {e}")
@@ -95,7 +99,7 @@ def build_hint_text(track_tags: list[str], artist_tags: list[str]) -> str | None
 
 
 def run():
-    api_key = settings.secrets.lastfm_api_key if hasattr(settings.secrets, "lastfm_api_key") else None
+    api_key = settings.secrets.lastfm_api_key if hasattr(settings.secrets, "lastfm_api_key") and settings.secrets.lastfm_api_key else None
     if not api_key:
         print("エラー: LASTFM_API_KEY が .env に設定されていません。")
         print("取得先: https://www.last.fm/api/account/create")
@@ -107,11 +111,10 @@ def run():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # genre_hint が未設定かつ title/artist が揃っているトラックを対象
+        # researched_at が NULL かつ title/artist が揃っているトラックを対象
         cursor.execute("""
-            SELECT track_id, title, artist FROM tracks
-            WHERE genre_hint IS NULL
-              AND researched_at IS NULL
+            SELECT track_id, title, artist, genre_hint FROM tracks
+            WHERE researched_at IS NULL
               AND title IS NOT NULL
               AND artist IS NOT NULL
         """)
@@ -128,40 +131,51 @@ def run():
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         for i, row in enumerate(rows, 1):
-            track_id = row["track_id"]
-            title    = row["title"] or ""
-            artist   = row["artist"] or ""
+            track_id      = row["track_id"]
+            title         = row["title"] or ""
+            artist        = row["artist"] or ""
+            existing_hint = row["genre_hint"] or ""
 
             print(f"[{i}/{len(rows)}] {artist} - {title}", end=" ... ", flush=True)
 
-            # トラックタグ取得
-            track_tags = fetch_lastfm_tags(artist, title, api_key)
-            time.sleep(REQUEST_DELAY_SEC)
-
-            # フォールバック: アーティストタグ
-            artist_tags = []
-            if not track_tags:
-                artist_tags = fetch_lastfm_artist_tags(artist, api_key)
+            try:
+                # トラックタグ取得
+                track_tags = fetch_lastfm_tags(artist, title, api_key)
                 time.sleep(REQUEST_DELAY_SEC)
 
-            hint = build_hint_text(track_tags, artist_tags)
-            now  = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                # フォールバック: アーティストタグ
+                artist_tags = []
+                if not track_tags:
+                    artist_tags = fetch_lastfm_artist_tags(artist, api_key)
+                    time.sleep(REQUEST_DELAY_SEC)
 
-            cursor.execute(
-                "UPDATE tracks SET genre_hint = ?, researched_at = ? WHERE track_id = ?",
-                (hint, now, track_id)
-            )
-            conn.commit()
+                lfm_hint = build_hint_text(track_tags, artist_tags)
+                now  = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-            if hint:
-                print(f"OK ({len(track_tags)} track tags, {len(artist_tags)} artist tags)")
-                logging.info(f"{track_id} | {artist} - {title} | {hint}")
-                success += 1
-            else:
-                print("ヒントなし（タグ未登録）")
+                if existing_hint and lfm_hint:
+                    final_hint = f"{existing_hint} | {lfm_hint}"
+                else:
+                    final_hint = lfm_hint or existing_hint or None
+
+                cursor.execute(
+                    "UPDATE tracks SET genre_hint = ?, researched_at = ? WHERE track_id = ?",
+                    (final_hint, now, track_id)
+                )
+                conn.commit()
+
+                if lfm_hint:
+                    print(f"OK ({len(track_tags)} track tags, {len(artist_tags)} artist tags)")
+                    logging.info(f"{track_id} | {artist} - {title} | {final_hint}")
+                    success += 1
+                else:
+                    print("ヒントなし（タグ未登録）")
+                    skipped += 1
+            except Exception as e:
+                print(f"エラースキップ ({e})")
+                logging.error(f"Error researching track {track_id}: {e}")
                 skipped += 1
 
-    print(f"\n完了: {success} 件成功, {skipped} 件ヒントなし")
+    print(f"\n完了: {success} 件成功, {skipped} 件ヒントなし/エラー")
 
 
 if __name__ == "__main__":

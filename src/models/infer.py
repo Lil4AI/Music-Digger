@@ -20,9 +20,9 @@ def get_model():
 
 def predict_genre(track_id: str) -> dict:
     """
-    指定された track_id の特徴量から、Tear Out vs Riddim の確率を予測する。
+    指定された track_id の特徴量から、各ジャンルの存在確率を予測する。
     戻り値:
-        {"tearout": float, "riddim": float}
+        {"heavy_dubstep": 0.8, "riddim": 0.2, ...}
     """
     try:
         X_dict = load_unlabeled_features(track_id)
@@ -36,7 +36,17 @@ def predict_genre(track_id: str) -> dict:
     probs = model.predict_proba(X_dict)[0]
     
     # 学習済みモデルが保持しているクラスラベル（model.clf.classes_）を取得
-    # なければ設定ファイル（settings.genre_labels）をフォールバックとして使用
-    classes = model.clf.classes_ if hasattr(model, 'clf') and hasattr(model.clf, 'classes_') else settings.genre_labels
+    raw_classes = model.clf.classes_ if hasattr(model, 'clf') and hasattr(model.clf, 'classes_') else list(range(len(settings.genre_labels)))
     
-    return {str(cls): float(prob) for cls, prob in zip(classes, probs)}
+    genre_names = []
+    for cls in raw_classes:
+        try:
+            idx = int(cls)
+            if 0 <= idx < len(settings.genre_labels):
+                genre_names.append(settings.genre_labels[idx])
+            else:
+                genre_names.append(str(cls))
+        except (ValueError, TypeError):
+            genre_names.append(str(cls))
+
+    return {name: float(prob) for name, prob in zip(genre_names, probs)}

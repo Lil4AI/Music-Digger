@@ -363,7 +363,7 @@
     future_bass:      '🌊',
     progressive_house:'🏟',
     drum_and_bass:    '🥁',
-    festival_trap:    '🎪',
+    trap:             '🎪',
   };
 
   const GENRE_LABELS_JP = {
@@ -374,13 +374,14 @@
     future_bass:      'Future\nBass',
     progressive_house:'Prog.\nHouse',
     drum_and_bass:    'D&B',
-    festival_trap:    'Festival\nTrap',
+    trap:             'Trap',
   };
 
   let currentTrackId = null;
   let genreLabels = [];
   let totalLabeled = 0;
   let totalRemaining = 0;
+  let isSubmitting = false;
 
   // ─── 初期化 ───
   async function loadNext() {
@@ -390,6 +391,7 @@
 
     try {
       const res  = await fetch('/api/labeling/next');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.done) {
@@ -404,21 +406,21 @@
       renderCard(data.track);
       renderGenreGrid(data.genre_labels);
       updateProgress(data.labeled, data.remaining);
+      document.getElementById('card-area').style.display = 'block';
     } catch(e) {
       console.error(e);
       alert('APIへの接続に失敗しました。サーバーが起動しているか確認してください。');
+    } finally {
+      document.getElementById('loading').style.display = 'none';
     }
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('card-area').style.display = 'block';
   }
 
   // ─── カード描画 ───
   // Seed: xxx 形式のヒントからジャンルラベルを抽出する
   function extractSeedGenre(hint) {
     if (!hint) return null;
-    const m = hint.match(/Seed:\s*(\S+)/);
-    return m ? m[1] : null;
+    const m = hint.match(/Seed:\s*(\S+)/i);
+    return m ? m[1].toLowerCase() : null;
   }
 
   let currentSeedGenre = null;
@@ -457,13 +459,13 @@
       const jp    = GENRE_LABELS_JP[label] || label;
       const btn = document.createElement('button');
       // Seedジャンルに一致するボタンをハイライト
-      const isSuggested = currentSeedGenre && label === currentSeedGenre;
+      const isSuggested = currentSeedGenre && label.toLowerCase() === currentSeedGenre;
       btn.className = 'genre-btn' + (isSuggested ? ' suggested' : '');
       btn.id = `genre-btn-${i}`;
       btn.innerHTML = `
         <span class="key-badge">${i + 1}</span>
         <span class="emoji">${emoji}</span>
-        ${jp.replace('\n','<br>')}
+        ${jp.replace(/\n/g,'<br>')}
       `;
       btn.onclick = () => applyLabel(label, i);
       grid.appendChild(btn);
@@ -472,33 +474,41 @@
 
   // ─── ラベル適用 ───
   async function applyLabel(label, btnIndex) {
-    if (!currentTrackId) return;
+    if (!currentTrackId || isSubmitting) return;
+    isSubmitting = true;
     const btn = document.getElementById(`genre-btn-${btnIndex}`);
-    btn.classList.add('pressed');
+    if (btn) btn.classList.add('pressed');
 
     try {
-      await fetch(`/api/tracks/${currentTrackId}/label`, {
+      const res = await fetch(`/api/tracks/${currentTrackId}/label`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       showToast(`✅ ${label}`);
       setTimeout(loadNext, 180);
     } catch(e) {
-      btn.classList.remove('pressed');
+      if (btn) btn.classList.remove('pressed');
       alert('ラベルの保存に失敗しました。');
+    } finally {
+      isSubmitting = false;
     }
   }
 
   // ─── スキップ ───
   async function skipCurrent() {
-    if (!currentTrackId) return;
+    if (!currentTrackId || isSubmitting) return;
+    isSubmitting = true;
     try {
-      await fetch(`/api/labeling/skip/${currentTrackId}`, { method: 'POST' });
+      const res = await fetch(`/api/labeling/skip/${currentTrackId}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       showToast('⏭ スキップ');
       loadNext();
     } catch(e) {
       alert('スキップの処理に失敗しました。');
+    } finally {
+      isSubmitting = false;
     }
   }
 
@@ -512,6 +522,7 @@
 
   // ─── 完了画面 ───
   function showDone(labeled) {
+    currentTrackId = null;
     document.getElementById('loading').style.display = 'none';
     document.getElementById('card-area').style.display = 'none';
     document.getElementById('done-screen').style.display = 'flex';
@@ -530,6 +541,9 @@
   // ─── キーボードショートカット ───
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!currentTrackId || isSubmitting) return;
+
     const key = e.key.toLowerCase();
 
     // 1〜8 でジャンル選択

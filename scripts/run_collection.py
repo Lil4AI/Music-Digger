@@ -89,7 +89,7 @@ def collect_from_artist(genre: str, artist_url: str, max_downloads: int,
                 raw_path = str(
                     Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav"
                 )
-                artist_name = track.get("user", {}).get("username", "Unknown Artist")
+                artist_name = track.get("uploader", "Unknown Artist")
                 cursor.execute(
                     """INSERT INTO tracks
                        (track_id, source, source_url, title, artist,

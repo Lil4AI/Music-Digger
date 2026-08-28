@@ -195,6 +195,7 @@ def run_pipeline_task(target_url: str, log_file: Path):
             
             scripts = [
                 ("scripts/run_collection.py", [target_url] if target_url else []),
+                ("scripts/run_genre_research.py", []),
                 ("scripts/run_separation.py", []),
                 ("scripts/run_encode.py", []),
                 ("scripts/run_features.py", []),
