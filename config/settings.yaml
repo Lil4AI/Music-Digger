@@ -8,8 +8,16 @@ subbass_cutoff_hz: 120              # bass/subbass帯域分割のカットオフ
 drop_segment_seconds: 18            # ドロップ検出のウィンドウ幅 (秒)
 
 # ジャンル分類
-genre_labels: [dubstep, house]     # 大きなジャンルのくくりで分類テストを行う
-model_version: "v0.1"               # 現在のモデルバージョン
+genre_labels:
+  - heavy_dubstep   # Brostep含む。Excision / Zomboy / Skrillex 系
+  - color_bass      # 実験的・変態的な音作り。G Jones / Mr. Carmack / Saka 系
+  - riddim          # 最小限の反復パターン。Chime / Infekt / Graphyt 系
+  - bass_house      # 4つ打きキック＋うねるベース。Valentino Khan / AC Slater 系
+  - future_bass     # 浮遊感のあるコードシンセ。Flume / San Holo / Odesza 系
+  - progressive_house # 展開重視のハウス。Eric Prydz / Innellea 系
+  - drum_and_bass   # 170BPM前後。Noisia / Chase & Status / Pendulum 系
+  - festival_trap   # トラップリズム＋アンセム。RL Grime / Baauer 系
+model_version: "v0.2"               # 8ジャンル対応版
 
 # 収集パイプライン設定
 collector:
