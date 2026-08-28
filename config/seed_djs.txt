@@ -1,3 +1,83 @@
-# 収集対象DJのSoundCloudプロフィールURL — 1行に1つ
-# 例:
-# https://soundcloud.com/example-dj-name
+# Seed DJリスト — 収集対象のSoundCloudプロフィールURL
+# フォーマット: ジャンルラベル|SoundCloud URL
+# 「#」で始まる行はコメント
+# クロスオーバーアーティスト（複数ジャンルを行き来する）は入れないこと
+
+# ──────────────────────────────────────────
+# heavy_dubstep（Brostep / ヘビーダブステップ）
+# ──────────────────────────────────────────
+heavy_dubstep|https://soundcloud.com/excision
+heavy_dubstep|https://soundcloud.com/zomboy
+heavy_dubstep|https://soundcloud.com/flux-pavilion
+heavy_dubstep|https://soundcloud.com/doctor-p
+heavy_dubstep|https://soundcloud.com/barely-alive
+heavy_dubstep|https://soundcloud.com/datsik
+
+# ──────────────────────────────────────────
+# color_bass（Colour Bass / Rushdown系）
+# ──────────────────────────────────────────
+color_bass|https://soundcloud.com/aceaura
+color_bass|https://soundcloud.com/sharks-official
+color_bass|https://soundcloud.com/skybreak
+color_bass|https://soundcloud.com/dr-ushuu
+color_bass|https://soundcloud.com/illusionize
+
+# ──────────────────────────────────────────
+# riddim（最小限の反復パターン系）
+# ──────────────────────────────────────────
+riddim|https://soundcloud.com/infekt-music
+riddim|https://soundcloud.com/graphyt
+riddim|https://soundcloud.com/ubur
+riddim|https://soundcloud.com/ganja-white-night
+riddim|https://soundcloud.com/pixel-terror
+riddim|https://soundcloud.com/must-die
+
+# ──────────────────────────────────────────
+# bass_house（4つ打ちキック＋うねるベース）
+# ──────────────────────────────────────────
+bass_house|https://soundcloud.com/valentino-khan
+bass_house|https://soundcloud.com/ac-slater
+bass_house|https://soundcloud.com/chrislorenzo
+bass_house|https://soundcloud.com/habstrakt
+bass_house|https://soundcloud.com/dr-fresch
+bass_house|https://soundcloud.com/walker-royce
+
+# ──────────────────────────────────────────
+# future_bass（浮遊感のあるコードシンセ系）
+# ──────────────────────────────────────────
+future_bass|https://soundcloud.com/flumemusic
+future_bass|https://soundcloud.com/san-holo
+future_bass|https://soundcloud.com/odesza
+future_bass|https://soundcloud.com/unlike-pluto
+future_bass|https://soundcloud.com/ookay
+future_bass|https://soundcloud.com/what-so-not
+
+# ──────────────────────────────────────────
+# progressive_house（展開重視のハウス）
+# ──────────────────────────────────────────
+progressive_house|https://soundcloud.com/ericprydz
+progressive_house|https://soundcloud.com/innellea
+progressive_house|https://soundcloud.com/lane8music
+progressive_house|https://soundcloud.com/ben-bohmer
+progressive_house|https://soundcloud.com/tinlicker
+progressive_house|https://soundcloud.com/yotto
+
+# ──────────────────────────────────────────
+# drum_and_bass（170BPM前後）
+# ──────────────────────────────────────────
+drum_and_bass|https://soundcloud.com/chase-and-status
+drum_and_bass|https://soundcloud.com/pendulum
+drum_and_bass|https://soundcloud.com/sub-focus
+drum_and_bass|https://soundcloud.com/camo-krooked
+drum_and_bass|https://soundcloud.com/dimension-official
+drum_and_bass|https://soundcloud.com/wilkinsonmusic
+
+# ──────────────────────────────────────────
+# festival_trap（トラップリズム＋アンセム系）
+# ──────────────────────────────────────────
+festival_trap|https://soundcloud.com/rlgrime
+festival_trap|https://soundcloud.com/baauer
+festival_trap|https://soundcloud.com/troyboi
+festival_trap|https://soundcloud.com/bro-safari
+festival_trap|https://soundcloud.com/uz-music
+festival_trap|https://soundcloud.com/flosstradamus

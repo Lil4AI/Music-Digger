@@ -1,8 +1,9 @@
 """
 EDMサブジャンル自動判定システム — 楽曲収集バッチ
 
-SoundCloudのユーザーURLからトラック情報を取得し、
-条件を満たすものをダウンロードしてDBに登録する。
+config/seed_djs.txt（フォーマット: ジャンル|SoundCloud_URL）を読み込み、
+各アーティストの曲をダウンロードしてDBに登録する。
+ジャンルラベルは収集時に human_label へ自動セット。
 """
 
 import sys
@@ -24,65 +25,134 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def run(target_url: str, max_downloads: int = 10):
-    db_path = Path(settings.project_root) / settings.paths.db / "edm_classifier.db"
-    
-    print(f"URLからトラックを取得中: {target_url} (最大取得件数: {max_downloads})")
-    candidates = fetch_candidate_tracks(target_url, max_downloads=max_downloads)
-    
+
+def parse_seed_file(seed_path: Path) -> list[tuple[str, str]]:
+    """
+    seed_djs.txt を読み込み、(genre_label, url) のリストを返す。
+    フォーマット: genre_label|https://soundcloud.com/...
+    「#」で始まる行・空行は無視。
+    """
+    entries = []
+    for line in seed_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "|" not in line:
+            logging.warning(f"フォーマット不正のためスキップ: {line}")
+            continue
+        genre, url = line.split("|", 1)
+        entries.append((genre.strip(), url.strip()))
+    return entries
+
+
+def collect_from_artist(genre: str, artist_url: str, max_downloads: int,
+                        db_path: Path, valid_genres: list[str]) -> tuple[int, int]:
+    """
+    1アーティストの曲を収集しDBに登録する。
+    戻り値: (success_count, skip_count)
+    """
+    if genre not in valid_genres:
+        print(f"  ⚠ 不明なジャンル '{genre}' — settings.yaml の genre_labels を確認してください")
+        return 0, 0
+
+    print(f"\n📂 [{genre}] {artist_url}")
+    candidates = fetch_candidate_tracks(artist_url, max_downloads=max_downloads)
+
     if not candidates:
-        print("トラックが見つかりませんでした。")
-        sys.exit(1)
-        
-    print(f"{len(candidates)} 件の候補が見つかりました。")
-    
+        print("  トラックが見つかりませんでした。")
+        return 0, 0
+
+    print(f"  {len(candidates)} 件の候補")
+    success = 0
+    skipped = 0
+
     with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
-        success_count = 0
-        attempt_count = 0
-        
         for track in candidates:
-            # 事前フィルタ
             if not passes_prefilter(track):
-                print(f"スキップ: {track['title']} (フィルタ除外)")
+                skipped += 1
                 continue
-                
-            track_id = hashlib.sha256(track['url'].encode()).hexdigest()[:16]
-            
-            # 既に存在するかチェック
+
+            track_id = hashlib.sha256(track["url"].encode()).hexdigest()[:16]
+
+            # 重複チェック
             cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
             if cursor.fetchone():
-                print(f"スキップ: {track['title']} (既に存在)")
+                skipped += 1
                 continue
-                
-            attempt_count += 1
-            print(f"ダウンロード開始: {track['title']}")
-            success = download_track(track['url'], track_id)
-            
-            if success:
-                now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-                raw_audio_path = str(Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav")
+
+            print(f"  ⬇ {track['title']}", end=" ... ", flush=True)
+            ok = download_track(track["url"], track_id)
+
+            if ok:
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                raw_path = str(
+                    Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav"
+                )
+                artist_name = track.get("user", {}).get("username", "Unknown Artist")
                 cursor.execute(
-                    '''INSERT INTO tracks (track_id, source, source_url, title, artist, status, raw_audio_path, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (track_id, 'soundcloud', track['url'], track['title'], track.get('user', {}).get('username', 'Unknown Artist'), 'collected', raw_audio_path, now)
+                    """INSERT INTO tracks
+                       (track_id, source, source_url, title, artist,
+                        status, raw_audio_path, human_label, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (track_id, "soundcloud", track["url"], track["title"],
+                     artist_name, "collected", raw_path, genre, now),
                 )
                 conn.commit()
-                print(" -> 完了")
-                logging.info(f"Collected track: {track_id} - {track['title']}")
-                success_count += 1
+                print("✅")
+                logging.info(f"Collected [{genre}]: {track_id} - {track['title']}")
+                success += 1
             else:
-                print(" -> 失敗")
+                print("❌")
+                logging.warning(f"Download failed: {track['url']}")
 
-        if attempt_count > 0 and success_count == 0:
-            print("新たに収集したトラックはありませんでした（処理は継続します）。")
-            sys.exit(0)
+    return success, skipped
+
+
+def run(target_url: str = "", max_downloads: int = 10):
+    """
+    メイン実行関数。
+    - target_url が指定された場合: そのURLのみ収集（ジャンルは 'unknown'）
+    - 未指定の場合: seed_djs.txt を全件処理
+    """
+    db_path = Path(settings.project_root) / settings.paths.db / "edm_classifier.db"
+    valid_genres = list(settings.genre_labels)
+
+    if target_url:
+        # 単一URL指定モード（後方互換）
+        collect_from_artist("unknown", target_url, max_downloads, db_path, valid_genres + ["unknown"])
+        return
+
+    # seed_djs.txt 一括モード
+    seed_path = Path(settings.project_root) / "config" / "seed_djs.txt"
+    if not seed_path.exists():
+        print(f"エラー: {seed_path} が見つかりません。")
+        sys.exit(1)
+
+    entries = parse_seed_file(seed_path)
+    if not entries:
+        print("seed_djs.txt にエントリがありません。")
+        sys.exit(0)
+
+    print(f"🎵 {len(entries)} アーティストから収集を開始します（各最大 {max_downloads} 曲）\n")
+    total_success = 0
+    total_skipped = 0
+
+    for genre, url in entries:
+        s, sk = collect_from_artist(genre, url, max_downloads, db_path, valid_genres)
+        total_success += s
+        total_skipped += sk
+
+    print(f"\n✅ 収集完了: {total_success} 件取得, {total_skipped} 件スキップ")
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="SoundCloudから楽曲を収集・ダウンロードします")
-    parser.add_argument("url", type=str, nargs="?", default="https://soundcloud.com/skrillex", help="収集対象のSoundCloud URL")
-    parser.add_argument("--max-downloads", type=int, default=10, help="最大ダウンロード件数 (デフォルト: 10)")
-    
+    parser.add_argument("url", type=str, nargs="?", default="",
+                        help="単一URLを指定（省略時は seed_djs.txt を全件処理）")
+    parser.add_argument("--max-downloads", type=int, default=10,
+                        help="1アーティストあたりの最大ダウンロード件数 (デフォルト: 10)")
     args = parser.parse_args()
     run(args.url, max_downloads=args.max_downloads)
+
