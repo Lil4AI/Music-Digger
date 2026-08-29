@@ -110,12 +110,12 @@ def get_next_for_labeling():
         )
         labeled_count = cursor.fetchone()[0]
 
-        # 次の未ラベルトラックを取得（新しく収集したトラックを優先）
+        # 次の未ラベルトラックを取得（現在注力中のTrapトラックを最優先表示）
         cursor.execute("""
             SELECT track_id, title, artist, source_url, genre_hint
             FROM tracks
             WHERE human_label IS NULL
-            ORDER BY created_at DESC
+            ORDER BY (CASE WHEN lower(genre_hint) LIKE '%trap%' THEN 0 ELSE 1 END), created_at DESC
             LIMIT 1
         """)
         row = cursor.fetchone()
