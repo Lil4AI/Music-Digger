@@ -14,10 +14,11 @@ genre_labels:
   - riddim          # 最小限の反復パターン。Chime / Infekt / Graphyt 系
   - bass_house      # 4つ打きキック＋うねるベース。Valentino Khan / AC Slater 系
   - future_bass     # 浮遊感のあるコードシンセ。Flume / San Holo / Odesza 系
+  - melodic_dubstep # 感情的・メロディ重視のダブステップ。Seven Lions / ILLENIUM / MitiS 系
   - progressive_house # 展開重視のハウス。Eric Prydz / Innellea 系
   - drum_and_bass   # 170BPM前後。Chase & Status / Pendulum 系
   - trap            # フェスティバル〜ダークトラップ。RL Grime / isoxo / Juelz 系
-model_version: "v0.2"               # 8ジャンル対応版
+model_version: "v0.2"               # 9ジャンル対応版
 
 # 収集パイプライン設定
 collector:

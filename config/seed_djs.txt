@@ -56,6 +56,16 @@ future_bass|https://soundcloud.com/ookay
 future_bass|https://soundcloud.com/what-so-not
 
 # ──────────────────────────────────────────
+# melodic_dubstep（感情的・メロディ重視のダブステップ）
+# ──────────────────────────────────────────
+melodic_dubstep|https://soundcloud.com/seven-lions
+melodic_dubstep|https://soundcloud.com/illeniumofficial
+melodic_dubstep|https://soundcloud.com/saidthesky
+melodic_dubstep|https://soundcloud.com/mitis
+melodic_dubstep|https://soundcloud.com/dabinmusic
+melodic_dubstep|https://soundcloud.com/trivectamusic
+
+# ──────────────────────────────────────────
 # progressive_house（展開重視のハウス）
 # ──────────────────────────────────────────
 progressive_house|https://soundcloud.com/ericprydz
