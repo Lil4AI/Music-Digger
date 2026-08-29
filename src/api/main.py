@@ -135,17 +135,23 @@ def get_next_for_labeling():
 @app.post("/api/labeling/skip/{track_id}")
 def skip_track(track_id: str):
     """
-    指定トラックをスキップ扱いにする（human_label = '_skip'）。
-    学習データから除外され、ラベリングUIでは次の曲に進む。
+    指定トラックをスキップ時に完全削除する。
+    DBレコードとローカル音声ファイルを完全に削除。
     """
     with contextlib.closing(get_db_connection()) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE tracks SET human_label = '_skip' WHERE track_id = ?",
-            (track_id,)
-        )
+        cursor.execute("SELECT raw_audio_path FROM tracks WHERE track_id = ?", (track_id,))
+        row = cursor.fetchone()
+        if row and row['raw_audio_path']:
+            audio_path = Path(row['raw_audio_path'])
+            if audio_path.exists():
+                try:
+                    audio_path.unlink()
+                except Exception as e:
+                    pass
+        cursor.execute("DELETE FROM tracks WHERE track_id = ?", (track_id,))
         conn.commit()
-    return {"status": "skipped", "track_id": track_id}
+    return {"status": "deleted", "track_id": track_id}
 
 
 @app.get("/labeler")
