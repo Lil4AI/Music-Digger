@@ -10,56 +10,60 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
     ユーザーURLの場合は自動的に /tracks を付与して単一楽曲トラックのみを取得対象にする。
     """
     target_url = playlist_or_user_url.rstrip('/')
+    urls_to_try = [target_url]
     if 'soundcloud.com/' in target_url and not any(target_url.endswith(x) for x in ['/tracks', '/popular-tracks', '/sets']):
-        # SoundCloudユーザーTOPの場合、単曲トラックタブ (/tracks) を明示指定
         if target_url.count('/') == 3:  # https://soundcloud.com/username
-            target_url += '/tracks'
+            urls_to_try.insert(0, target_url + '/tracks')
 
     ydl_opts = {
+        'extract_flat': 'in_playlist',
         'quiet': True,
         'playlistend': max_downloads,
     }
     
     candidates = []
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(target_url, download=False)
-            if 'entries' in info:
-                for entry in info['entries']:
-                    if entry:
-                        web_url = entry.get('webpage_url') or entry.get('url', '')
-                        title = entry.get('title', 'Unknown Title')
-                        uploader = entry.get('uploader') or entry.get('uploader_id') or ''
-                        if not uploader and ' - ' in title:
-                            uploader = title.split(' - ', 1)[0].strip()
-                        if not uploader:
-                            uploader = 'Unknown Artist'
+        for url in urls_to_try:
+            try:
+                info = ydl.extract_info(url, download=False)
+                if 'entries' in info:
+                    for entry in info['entries']:
+                        if entry:
+                            web_url = entry.get('permalink_url') or entry.get('webpage_url') or entry.get('url', '')
+                            title = entry.get('title', 'Unknown Title')
+                            uploader = entry.get('uploader') or entry.get('uploader_id') or ''
+                            if not uploader and ' - ' in title:
+                                uploader = title.split(' - ', 1)[0].strip()
+                            if not uploader:
+                                uploader = 'Unknown Artist'
 
-                        candidates.append({
-                            'id': entry.get('id', ''),
-                            'title': title,
-                            'url': web_url,
-                            'duration': entry.get('duration', 0),
-                            'uploader': uploader
-                        })
-            else:
-                web_url = info.get('webpage_url') or info.get('url', '')
-                title = info.get('title', 'Unknown Title')
-                uploader = info.get('uploader') or info.get('uploader_id') or ''
-                if not uploader and ' - ' in title:
-                    uploader = title.split(' - ', 1)[0].strip()
-                if not uploader:
-                    uploader = 'Unknown Artist'
+                            candidates.append({
+                                'id': entry.get('id', ''),
+                                'title': title,
+                                'url': web_url,
+                                'duration': entry.get('duration', 0),
+                                'uploader': uploader
+                            })
+                else:
+                    web_url = info.get('permalink_url') or info.get('webpage_url') or info.get('url', '')
+                    title = info.get('title', 'Unknown Title')
+                    uploader = info.get('uploader') or info.get('uploader_id') or ''
+                    if not uploader and ' - ' in title:
+                        uploader = title.split(' - ', 1)[0].strip()
+                    if not uploader:
+                        uploader = 'Unknown Artist'
 
-                candidates.append({
-                    'id': info.get('id', ''),
-                    'title': title,
-                    'url': web_url,
-                    'duration': info.get('duration', 0),
-                    'uploader': uploader
-                })
-        except Exception as e:
-            logging.error(f"メタデータの取得に失敗しました ({target_url}): {e}")
+                    candidates.append({
+                        'id': info.get('id', ''),
+                        'title': title,
+                        'url': web_url,
+                        'duration': info.get('duration', 0),
+                        'uploader': uploader
+                    })
+                if candidates:
+                    break
+            except Exception as e:
+                logging.error(f"メタデータの取得に失敗しました ({url}): {e}")
             
     return candidates
 
