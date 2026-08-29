@@ -445,13 +445,21 @@
       link.style.display = 'none';
     }
 
+    const isRemix = /remix|flip|bootleg|rework|edit|vip/i.test(track.title || '');
     const hint = document.getElementById('hint-text');
-    if (track.genre_hint) {
+    if (isRemix) {
+      currentSeedGenre = null; // リミックス曲はシード属性を過信しないようハイライトをオフ
+      hint.innerHTML = `⚠️ <strong>【REMIX / FLIP音源】</strong> (原曲とジャンルが異なっている可能性があります)<br>${track.genre_hint || ''}`;
+      hint.classList.remove('none');
+      hint.style.color = '#fbbf24'; // Warning yellow
+    } else if (track.genre_hint) {
       hint.textContent = track.genre_hint;
       hint.classList.remove('none');
+      hint.style.color = '';
     } else {
       hint.textContent = 'ヒントなし';
       hint.classList.add('none');
+      hint.style.color = '';
     }
 
     const player = document.getElementById('audio-player');

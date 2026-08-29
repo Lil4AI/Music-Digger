@@ -69,7 +69,8 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
 
 def passes_prefilter(track_meta: dict) -> bool:
     """
-    明らかにEDMトラックではないもの、Mix、Podcast、セット商品（/sets/）を除外する。
+    明らかにEDMトラックではないもの、Mix、Podcast、セット商品（/sets/）、
+    および地域制限等の短尺プレビュー音源（90秒未満）を除外する。
     """
     url = track_meta.get('url', '').lower()
     title = track_meta.get('title', '').lower()
@@ -82,6 +83,10 @@ def passes_prefilter(track_meta: dict) -> bool:
     # 10分以上の長尺音源はMix/Setとみなして除外
     if duration > 600:
         return False
+
+    # 90秒未満の短尺音源（30秒の試聴用プレビュー音源等）は除外
+    if 0 < duration < 90:
+        return False
         
     # キーワード除外 (ミックス、ラジオ、ポッドキャスト、ライブセット等)
     exclude_pattern = r'(\b(mix|mixtape|megamix|podcast|guest|b2b|set|compilation|session|radio|episode|live at|boiler room)\b|ch\.\d+|vol\.\d+)'
@@ -93,11 +98,13 @@ def passes_prefilter(track_meta: dict) -> bool:
 def download_track(original_url: str, track_id: str) -> bool:
     """
     yt-dlp を用いて SoundCloud から音源をダウンロードし、WAV形式で保存する。
+    ダウンロード後に再生時間を検証し、90秒未満の場合はプレビュー音源とみなして削除する。
     """
     output_dir = Path(settings.project_root) / settings.paths.raw_audio
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # yt-dlp は拡張子を自動補完するため、出力テンプレートから拡張子を省く
+    wav_path = output_dir / f"{track_id}.wav"
     outtmpl = str(output_dir / f"{track_id}")
     
     ydl_opts = {
@@ -115,7 +122,23 @@ def download_track(original_url: str, track_id: str) -> bool:
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             ydl.download([original_url])
+            
+            # WAVファイルの長さを確認
+            if wav_path.exists():
+                import wave
+                with wave.open(str(wav_path), 'rb') as wf:
+                    frames = wf.getnframes()
+                    rate = wf.getframerate()
+                    duration_sec = frames / float(rate)
+                    
+                if duration_sec < 60:
+                    logging.warning(f"短尺プレビュー音源のため削除します ({duration_sec:.1f}s): {original_url}")
+                    wav_path.unlink(missing_ok=True)
+                    return False
+                    
             return True
         except Exception as e:
             logging.error(f"ダウンロード失敗 ({original_url}): {e}")
+            if wav_path.exists():
+                wav_path.unlink(missing_ok=True)
             return False
