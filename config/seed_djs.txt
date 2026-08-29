@@ -95,13 +95,14 @@ drum_and_bass|https://soundcloud.com/dimension-official
 drum_and_bass|https://soundcloud.com/wilkinsonmusic
 
 # ──────────────────────────────────────────
-# trap（フェスティバル〜ダークトラップ全般）
+# trap（EDM Trap）
 # ──────────────────────────────────────────
-trap|https://soundcloud.com/rlgrime
-trap|https://soundcloud.com/baauer
-trap|https://soundcloud.com/troyboi
-trap|https://soundcloud.com/bro-safari
-trap|https://soundcloud.com/uz-music
-trap|https://soundcloud.com/flosstradamus
-trap|https://soundcloud.com/iso-xo
 trap|https://soundcloud.com/bbjuelz
+trap|https://soundcloud.com/rlgrime
+trap|https://soundcloud.com/isoxo
+trap|https://soundcloud.com/rexydexy
+trap|https://soundcloud.com/controlfreak
+trap|https://soundcloud.com/nghtmre
+trap|https://soundcloud.com/knock2music
+trap|https://soundcloud.com/yellowclaw
+trap|https://soundcloud.com/flosstradamus
