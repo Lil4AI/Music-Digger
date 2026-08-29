@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from src.config import settings
+from src.config import settings, reload_settings
 
 _is_pipeline_running = False
 
@@ -57,6 +57,7 @@ def get_tracks():
 @app.get("/api/settings")
 def get_settings():
     """設定情報を取得"""
+    reload_settings()
     return {
         "genre_labels": settings.genre_labels
     }
@@ -94,6 +95,7 @@ def get_next_for_labeling():
     ラベル未付け（human_label IS NULL）のトラックを1件返す。
     Tinder風ラベリングUIが呼び出すエンドポイント。
     """
+    reload_settings()
     with contextlib.closing(get_db_connection()) as conn:
         cursor = conn.cursor()
 

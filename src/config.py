@@ -66,6 +66,15 @@ def _load_settings() -> SimpleNamespace:
     return cfg
 
 
+def reload_settings() -> SimpleNamespace:
+    """settings.yamlを再読み込みして最新の設定を反映する。"""
+    global settings
+    new_cfg = _load_settings()
+    for key, val in vars(new_cfg).items():
+        setattr(settings, key, val)
+    return settings
+
+
 # モジュールレベルで設定を公開
 # 他モジュールから: from src.config import settings
 settings = _load_settings()
