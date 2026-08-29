@@ -157,21 +157,26 @@ def labeler_page():
 @app.get("/api/audio/{track_id}/{stem}")
 def get_audio_file(track_id: str, stem: str):
     """
-    指定されたトラックの特定のステム(mp3)をストリーム配信する。
+    指定されたトラックの特定のステムをストリーム配信する。
+    MP3がない場合は元音源のWAVフォールバックに対応。
     stem: raw, drums, bass, subbass, other
     """
     if stem == "raw":
-        audio_path = Path(settings.project_root) / settings.paths.web_audio / "raw" / f"{track_id}.mp3"
+        mp3_path = Path(settings.project_root) / settings.paths.web_audio / "raw" / f"{track_id}.mp3"
+        wav_path = Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav"
+        if mp3_path.exists():
+            return FileResponse(str(mp3_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
+        elif wav_path.exists():
+            return FileResponse(str(wav_path), media_type="audio/wav", headers={"Accept-Ranges": "bytes"})
+        else:
+            raise HTTPException(status_code=404, detail="Audio file not found")
     elif stem in ["drums", "bass", "subbass", "other"]:
         audio_path = Path(settings.project_root) / settings.paths.web_audio / "stems" / track_id / f"{stem}.mp3"
+        if not audio_path.exists():
+            raise HTTPException(status_code=404, detail="Stem audio file not found")
+        return FileResponse(str(audio_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
     else:
         raise HTTPException(status_code=400, detail="Invalid stem type")
-        
-    if not audio_path.exists():
-        raise HTTPException(status_code=404, detail="Audio file not found")
-        
-    # FileResponse は標準で Range アクセス (206 Partial Content) をサポートしています
-    return FileResponse(str(audio_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
 
 class PipelineRequest(BaseModel):
     url: str = ""

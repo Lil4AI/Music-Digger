@@ -326,10 +326,11 @@
       <div class="hint-label">💡 ジャンルヒント（Last.fm）</div>
       <div class="hint-text" id="hint-text">取得中...</div>
     </div>
+    <audio id="audio-player" controls style="width:100%; margin-top:16px; border-radius:10px; height:40px;"></audio>
   </div>
 
   <div class="key-guide">
-    <kbd>1</kbd>〜<kbd>8</kbd> でジャンル選択 &nbsp;|&nbsp; <kbd>S</kbd> スキップ
+    <kbd>1</kbd>〜<kbd>8</kbd> ジャンル選択 &nbsp;|&nbsp; <kbd>Space</kbd> 再生/停止 &nbsp;|&nbsp; <kbd>S</kbd> スキップ
   </div>
 
   <div class="genre-grid" id="genre-grid">
@@ -448,6 +449,12 @@
       hint.textContent = 'ヒントなし';
       hint.classList.add('none');
     }
+
+    const player = document.getElementById('audio-player');
+    if (player) {
+      player.src = `/api/audio/${track.track_id}/raw`;
+      player.play().catch(() => {});
+    }
   }
 
   // ─── ジャンルボタン描画 ───
@@ -523,6 +530,8 @@
   // ─── 完了画面 ───
   function showDone(labeled) {
     currentTrackId = null;
+    const player = document.getElementById('audio-player');
+    if (player) player.pause();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('card-area').style.display = 'none';
     document.getElementById('done-screen').style.display = 'flex';
@@ -545,6 +554,20 @@
     if (!currentTrackId || isSubmitting) return;
 
     const key = e.key.toLowerCase();
+
+    // Space で再生 / 一時停止
+    if (e.code === 'Space') {
+      e.preventDefault();
+      const player = document.getElementById('audio-player');
+      if (player) {
+        if (player.paused) {
+          player.play().catch(() => {});
+        } else {
+          player.pause();
+        }
+      }
+      return;
+    }
 
     // 1〜8 でジャンル選択
     const num = parseInt(e.key);
