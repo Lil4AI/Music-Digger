@@ -35,6 +35,15 @@ riddim|https://soundcloud.com/must-die
 riddim|https://soundcloud.com/holmusic
 
 # ──────────────────────────────────────────
+# briddim（Brostep x Riddim ハイブリッド）
+# ──────────────────────────────────────────
+briddim|https://soundcloud.com/wooli
+briddim|https://soundcloud.com/kompanymusic
+briddim|https://soundcloud.com/rayvolpemusic
+briddim|https://soundcloud.com/virtual-riot
+briddim|https://soundcloud.com/maraudamusic
+
+# ──────────────────────────────────────────
 # bass_house（4つ打ちキック＋うねるベース）
 # ──────────────────────────────────────────
 bass_house|https://soundcloud.com/valentino-khan

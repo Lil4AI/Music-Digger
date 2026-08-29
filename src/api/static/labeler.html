@@ -330,7 +330,7 @@
   </div>
 
   <div class="key-guide">
-    <kbd>1</kbd>〜<kbd>9</kbd> ジャンル選択 &nbsp;|&nbsp; <kbd>Space</kbd> 再生/停止 &nbsp;|&nbsp; <kbd>S</kbd> スキップ
+    <kbd>1</kbd>〜<kbd>9</kbd>, <kbd>0</kbd> ジャンル選択 &nbsp;|&nbsp; <kbd>Space</kbd> 再生/停止 &nbsp;|&nbsp; <kbd>S</kbd> スキップ
   </div>
 
   <div class="genre-grid" id="genre-grid">
@@ -360,6 +360,7 @@
     heavy_dubstep:    '💥',
     color_bass:       '🎨',
     riddim:           '🔁',
+    briddim:          '🌋',
     bass_house:       '🏠',
     future_bass:      '🌊',
     melodic_dubstep:  '✨',
@@ -372,6 +373,7 @@
     heavy_dubstep:    'Heavy\nDubstep',
     color_bass:       'Color\nBass',
     riddim:           'Riddim',
+    briddim:          'Briddim',
     bass_house:       'Bass\nHouse',
     future_bass:      'Future\nBass',
     melodic_dubstep:  'Melodic\nDubstep',
@@ -473,8 +475,9 @@
       const isSuggested = currentSeedGenre && label.toLowerCase() === currentSeedGenre;
       btn.className = 'genre-btn' + (isSuggested ? ' suggested' : '');
       btn.id = `genre-btn-${i}`;
+      const keyBadge = (i === 9) ? '0' : (i + 1);
       btn.innerHTML = `
-        <span class="key-badge">${i + 1}</span>
+        <span class="key-badge">${keyBadge}</span>
         <span class="emoji">${emoji}</span>
         ${jp.replace(/\n/g,'<br>')}
       `;
@@ -573,8 +576,9 @@
       return;
     }
 
-    // 1〜8 でジャンル選択
-    const num = parseInt(e.key);
+    // 1〜9, 0 でジャンル選択 (10個対応)
+    let num = parseInt(e.key);
+    if (e.key === '0') num = 10;
     if (!isNaN(num) && num >= 1 && num <= genreLabels.length) {
       e.preventDefault();
       applyLabel(genreLabels[num - 1], num - 1);
