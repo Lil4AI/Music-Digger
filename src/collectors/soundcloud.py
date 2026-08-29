@@ -7,7 +7,14 @@ from src.config import settings
 def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -> list:
     """
     SoundCloudのプレイリストやユーザーURLからトラックのメタデータを取得する。
+    ユーザーURLの場合は自動的に /tracks を付与して単一楽曲トラックのみを取得対象にする。
     """
+    target_url = playlist_or_user_url.rstrip('/')
+    if 'soundcloud.com/' in target_url and not any(target_url.endswith(x) for x in ['/tracks', '/popular-tracks', '/sets']):
+        # SoundCloudユーザーTOPの場合、単曲トラックタブ (/tracks) を明示指定
+        if target_url.count('/') == 3:  # https://soundcloud.com/username
+            target_url += '/tracks'
+
     ydl_opts = {
         'quiet': True,
         'playlistend': max_downloads,
@@ -16,7 +23,7 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
     candidates = []
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
-            info = ydl.extract_info(playlist_or_user_url, download=False)
+            info = ydl.extract_info(target_url, download=False)
             if 'entries' in info:
                 for entry in info['entries']:
                     if entry:
@@ -52,24 +59,29 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
                     'uploader': uploader
                 })
         except Exception as e:
-            logging.error(f"メタデータの取得に失敗しました ({playlist_or_user_url}): {e}")
+            logging.error(f"メタデータの取得に失敗しました ({target_url}): {e}")
             
     return candidates
 
 def passes_prefilter(track_meta: dict) -> bool:
     """
-    明らかにEDMトラックではないもの（Mix、Podcast等）を除外する。
+    明らかにEDMトラックではないもの、Mix、Podcast、セット商品（/sets/）を除外する。
     """
+    url = track_meta.get('url', '').lower()
     title = track_meta.get('title', '').lower()
     duration = track_meta.get('duration') or 0
     
-    # 10分以上の曲はMixとみなす
+    # プレイリスト・アルバム・セット音源は除外
+    if '/sets/' in url or '/albums/' in url or '/compilations/' in url:
+        return False
+
+    # 10分以上の長尺音源はMix/Setとみなして除外
     if duration > 600:
         return False
         
-    # キーワード除外 (単語境界を使用して "Sunset" のような誤爆を防ぐ)
-    exclude_pattern = r'\b(mix|podcast|guest|b2b|set)\b'
-    if re.search(exclude_pattern, title):
+    # キーワード除外 (ミックス、ラジオ、ポッドキャスト、ライブセット等)
+    exclude_pattern = r'(\b(mix|mixtape|megamix|podcast|guest|b2b|set|compilation|session|radio|episode|live at|boiler room)\b|ch\.\d+|vol\.\d+)'
+    if re.search(exclude_pattern, title) or re.search(exclude_pattern, url):
         return False
         
     return True

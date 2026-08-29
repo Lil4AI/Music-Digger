@@ -105,13 +105,24 @@ const App = {
                 humanHtml = `<span class="label-badge ${cls}">${t.human_label.toUpperCase()}</span>`;
             }
 
+            const trackTitle = t.title || 'Unknown Title';
+            const trackArtist = t.artist || 'Unknown Artist';
+            const sourceLink = t.source_url
+                ? `<a href="${t.source_url}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;">↗ SoundCloud</a>`
+                : (t.source || '-');
+
             tr.innerHTML = `
-                <td style="font-family:monospace;font-size:.85em">${t.track_id}</td>
-                <td>${t.source || '-'}</td>
+                <td>
+                    <div style="font-weight:600;color:#fff;font-size:0.95rem;">${trackTitle}</div>
+                    <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">
+                        👤 ${trackArtist} &nbsp;|&nbsp; <span style="font-family:monospace;opacity:0.7;">ID: ${t.track_id}</span>
+                    </div>
+                </td>
+                <td>${sourceLink}</td>
                 <td>${status}</td>
                 <td>${aiHtml}</td>
                 <td>${humanHtml}</td>
-                <td><button class="btn-action" data-id="${t.track_id}">Analyze &amp; Label</button></td>
+                <td><button class="btn-action" data-id="${t.track_id}">Analyze &amp; Play</button></td>
             `;
 
             tr.querySelector('.btn-action').addEventListener('click', () => {
@@ -127,7 +138,8 @@ const App = {
         this.currentTrackId = trackId;
         const track = this.tracks.find(t => t.track_id === trackId);
 
-        document.getElementById('current-track-id').textContent = trackId;
+        const heading = track && track.title ? `${track.artist || 'Unknown'} - ${track.title}` : trackId;
+        document.getElementById('current-track-id').textContent = heading;
 
         const aiBadge = document.getElementById('current-ai-label');
         if (track && track.ai_label) {
