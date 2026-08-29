@@ -9,7 +9,6 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
     SoundCloudのプレイリストやユーザーURLからトラックのメタデータを取得する。
     """
     ydl_opts = {
-        'extract_flat': 'in_playlist',
         'quiet': True,
         'playlistend': max_downloads,
     }
@@ -21,20 +20,36 @@ def fetch_candidate_tracks(playlist_or_user_url: str, max_downloads: int = 10) -
             if 'entries' in info:
                 for entry in info['entries']:
                     if entry:
+                        web_url = entry.get('webpage_url') or entry.get('url', '')
+                        title = entry.get('title', 'Unknown Title')
+                        uploader = entry.get('uploader') or entry.get('uploader_id') or ''
+                        if not uploader and ' - ' in title:
+                            uploader = title.split(' - ', 1)[0].strip()
+                        if not uploader:
+                            uploader = 'Unknown Artist'
+
                         candidates.append({
                             'id': entry.get('id', ''),
-                            'title': entry.get('title', 'Unknown Title'),
-                            'url': entry.get('url', ''),
+                            'title': title,
+                            'url': web_url,
                             'duration': entry.get('duration', 0),
-                            'uploader': entry.get('uploader', 'Unknown')
+                            'uploader': uploader
                         })
             else:
+                web_url = info.get('webpage_url') or info.get('url', '')
+                title = info.get('title', 'Unknown Title')
+                uploader = info.get('uploader') or info.get('uploader_id') or ''
+                if not uploader and ' - ' in title:
+                    uploader = title.split(' - ', 1)[0].strip()
+                if not uploader:
+                    uploader = 'Unknown Artist'
+
                 candidates.append({
                     'id': info.get('id', ''),
-                    'title': info.get('title', 'Unknown Title'),
-                    'url': info.get('webpage_url', ''),
+                    'title': title,
+                    'url': web_url,
                     'duration': info.get('duration', 0),
-                    'uploader': info.get('uploader', 'Unknown')
+                    'uploader': uploader
                 })
         except Exception as e:
             logging.error(f"メタデータの取得に失敗しました ({playlist_or_user_url}): {e}")

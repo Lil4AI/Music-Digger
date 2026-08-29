@@ -13,6 +13,15 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Windowsの標準出力エンコーディング対策
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
+# プロジェクトルートを sys.path に追加
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.config import settings
 from src.collectors.soundcloud import fetch_candidate_tracks, passes_prefilter, download_track
 
