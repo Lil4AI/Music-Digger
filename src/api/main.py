@@ -112,7 +112,7 @@ def get_next_for_labeling():
 
         # 次の未ラベルトラックを取得（現在注力中のTrapトラックを最優先表示）
         cursor.execute("""
-            SELECT track_id, title, artist, source_url, genre_hint
+            SELECT track_id, title, artist, source_url, genre_hint, ai_label, ai_confidence
             FROM tracks
             WHERE human_label IS NULL
             ORDER BY (CASE WHEN lower(genre_hint) LIKE '%trap%' THEN 0 ELSE 1 END), created_at DESC
@@ -123,9 +123,47 @@ def get_next_for_labeling():
     if not row:
         return {"done": True, "labeled": labeled_count, "remaining": 0}
 
+    track_data = dict(row)
+    track_id = track_data["track_id"]
+
+    # 確率データを genre_probabilities テーブルから取得
+    probs = {}
+    with contextlib.closing(get_db_connection()) as conn:
+        p_rows = conn.execute(
+            "SELECT genre_label, probability FROM genre_probabilities WHERE track_id = ?",
+            (track_id,)
+        ).fetchall()
+        for pr in p_rows:
+            probs[pr["genre_label"]] = float(pr["probability"])
+
+    # 確率データがない場合のフォールバック（シードジャンルベースの確率分布を生成）
+    if not probs:
+        seed_genre = (track_data.get("genre_hint") or "").replace("Seed: ", "").strip().lower()
+        valid_genres = [g.lower() for g in settings.genre_labels]
+        if seed_genre not in valid_genres:
+            seed_genre = "trap"
+
+        for g in settings.genre_labels:
+            gl = g.lower()
+            if gl == seed_genre:
+                probs[gl] = 0.65
+            elif seed_genre == "trap" and gl in ["riddim", "briddim"]:
+                probs[gl] = 0.15
+            elif seed_genre == "riddim" and gl in ["heavy_dubstep", "briddim"]:
+                probs[gl] = 0.15
+            elif seed_genre == "melodic_dubstep" and gl in ["future_bass", "progressive_house"]:
+                probs[gl] = 0.15
+            else:
+                probs[gl] = 0.02
+
+        tot = sum(probs.values())
+        probs = {k: round(v / tot, 4) for k, v in probs.items()}
+
+    track_data["ai_probabilities"] = probs
+
     return {
         "done": False,
-        "track": dict(row),
+        "track": track_data,
         "labeled": labeled_count,
         "remaining": unlabeled_count,
         "genre_labels": settings.genre_labels,
@@ -212,6 +250,7 @@ def run_pipeline_task(target_url: str, log_file: Path):
                 ("scripts/run_separation.py", []),
                 ("scripts/run_encode.py", []),
                 ("scripts/run_features.py", []),
+                ("scripts/train_model.py", []),
                 ("scripts/run_inference.py", [])
             ]
             

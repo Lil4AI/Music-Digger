@@ -15,6 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tqdm import tqdm
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.config import settings
 from src.features.drums import extract_drums_features
 from src.features.bass import extract_bass_features

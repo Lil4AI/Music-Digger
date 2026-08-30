@@ -227,6 +227,80 @@
       letter-spacing: 0.04em;
     }
 
+    /* ─── GitHub Style Language/Genre Bar ─── */
+    .github-gauge-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 16px;
+    }
+    .github-gauge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .github-gauge-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .github-gauge-top {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .github-bar {
+      display: flex;
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .github-bar-segment {
+      height: 100%;
+      transition: width 0.4s ease;
+      position: relative;
+    }
+    .github-bar-segment:first-child {
+      border-top-left-radius: 6px;
+      border-bottom-left-radius: 6px;
+    }
+    .github-bar-segment:last-child {
+      border-top-right-radius: 6px;
+      border-bottom-right-radius: 6px;
+    }
+    .github-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      font-size: 12px;
+    }
+    .github-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .github-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .github-genre-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .github-pct {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
     /* ─── アクションバー ─── */
     .action-bar {
       display: flex;
@@ -326,6 +400,17 @@
       <div class="hint-label">💡 ジャンルヒント（Last.fm）</div>
       <div class="hint-text" id="hint-text">取得中...</div>
     </div>
+    
+    <!-- GitHub Style AI Genre Percentage Bar -->
+    <div class="github-gauge-box" id="github-gauge-box">
+      <div class="github-gauge-header">
+        <span class="github-gauge-title">🤖 AI予測確率ディストリビューション</span>
+        <span class="github-gauge-top" id="github-gauge-top">—</span>
+      </div>
+      <div class="github-bar" id="github-bar"></div>
+      <div class="github-legend" id="github-legend"></div>
+    </div>
+
     <audio id="audio-player" controls style="width:100%; margin-top:16px; border-radius:10px; height:40px;"></audio>
   </div>
 
@@ -367,6 +452,19 @@
     progressive_house:'🏟',
     drum_and_bass:    '🥁',
     trap:             '🎪',
+  };
+
+  const GENRE_COLORS = {
+    heavy_dubstep:    '#ef4444',
+    color_bass:       '#ec4899',
+    riddim:           '#f97316',
+    briddim:          '#eab308',
+    bass_house:       '#10b981',
+    future_bass:      '#06b6d4',
+    melodic_dubstep:  '#3b82f6',
+    progressive_house:'#6366f1',
+    drum_and_bass:    '#8b5cf6',
+    trap:             '#a855f7',
   };
 
   const GENRE_LABELS_JP = {
@@ -462,6 +560,8 @@
       hint.style.color = '';
     }
 
+    renderAiPercentageBar(track.ai_probabilities);
+
     const player = document.getElementById('audio-player');
     if (player) {
       const savedVol = localStorage.getItem('labeler_volume');
@@ -469,6 +569,53 @@
       player.src = `/api/audio/${track.track_id}/raw`;
       player.play().catch(() => {});
     }
+  }
+
+  // ─── GitHub Style AI Probability Bar 描画 ───
+  function renderAiPercentageBar(probabilities) {
+    const barEl = document.getElementById('github-bar');
+    const legendEl = document.getElementById('github-legend');
+    const topEl = document.getElementById('github-gauge-top');
+
+    if (!barEl || !legendEl || !topEl) return;
+    barEl.innerHTML = '';
+    legendEl.innerHTML = '';
+
+    if (!probabilities || Object.keys(probabilities).length === 0) {
+      topEl.textContent = 'データなし';
+      return;
+    }
+
+    const sorted = Object.entries(probabilities)
+      .map(([g, p]) => ({ genre: g, pct: Math.round(p * 100) }))
+      .filter(item => item.pct > 0)
+      .sort((a, b) => b.pct - a.pct);
+
+    if (sorted.length > 0) {
+      const topGenreClean = (GENRE_LABELS_JP[sorted[0].genre] || sorted[0].genre).replace(/\n/g, ' ');
+      topEl.textContent = `最有力: ${topGenreClean} (${sorted[0].pct}%)`;
+    }
+
+    sorted.forEach(item => {
+      const color = GENRE_COLORS[item.genre] || '#7c5cfc';
+      const labelJp = (GENRE_LABELS_JP[item.genre] || item.genre).replace(/\n/g, ' ');
+
+      const seg = document.createElement('div');
+      seg.className = 'github-bar-segment';
+      seg.style.width = item.pct + '%';
+      seg.style.backgroundColor = color;
+      seg.title = `${labelJp}: ${item.pct}%`;
+      barEl.appendChild(seg);
+
+      const leg = document.createElement('div');
+      leg.className = 'github-legend-item';
+      leg.innerHTML = `
+        <span class="github-dot" style="background-color: ${color}"></span>
+        <span class="github-genre-name">${labelJp}</span>
+        <span class="github-pct">${item.pct}%</span>
+      `;
+      legendEl.appendChild(leg);
+    });
   }
 
   // ─── ジャンルボタン描画 ───
