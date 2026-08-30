@@ -36,12 +36,10 @@ def run():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # 特徴量抽出済みで、かつ人間によるラベルがなく、かつ未分類のものを対象とする
+        # 特徴量抽出済みのすべてのトラックを対象とする
         cursor.execute('''
             SELECT track_id FROM tracks 
-            WHERE features_extracted_at IS NOT NULL 
-              AND human_label IS NULL 
-              AND classified_at IS NULL
+            WHERE features_extracted_at IS NOT NULL
         ''')
         rows = cursor.fetchall()
         
