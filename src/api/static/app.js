@@ -90,8 +90,48 @@ const App = {
                 ? '<span class="label-badge badge-neutral">Separated</span>'
                 : `<span class="label-badge badge-neutral">${t.status || 'unknown'}</span>`;
 
+            const GENRE_COLORS = {
+                heavy_dubstep:    '#ef4444',
+                color_bass:       '#ec4899',
+                riddim:           '#f97316',
+                briddim:          '#eab308',
+                bass_house:       '#10b981',
+                future_bass:      '#06b6d4',
+                melodic_dubstep:  '#3b82f6',
+                progressive_house:'#6366f1',
+                drum_and_bass:    '#8b5cf6',
+                trap:             '#a855f7',
+            };
+
             let aiHtml = '-';
-            if (t.ai_label && t.ai_confidence != null) {
+            if (t.ai_probabilities && Object.keys(t.ai_probabilities).length > 0) {
+                const sorted = Object.entries(t.ai_probabilities)
+                    .map(([g, p]) => ({ genre: g, pct: Math.round(p * 100) }))
+                    .filter(item => item.pct > 0)
+                    .sort((a, b) => b.pct - a.pct);
+                
+                if (sorted.length > 0) {
+                    const topItem = sorted[0];
+                    const topColor = GENRE_COLORS[topItem.genre] || '#7c5cfc';
+                    
+                    const barSegments = sorted.map(item => {
+                        const color = GENRE_COLORS[item.genre] || '#7c5cfc';
+                        return `<div style="width:${item.pct}%;height:100%;background-color:${color};" title="${item.genre.toUpperCase()}: ${item.pct}%"></div>`;
+                    }).join('');
+                    
+                    aiHtml = `
+                        <div style="display:flex;flex-direction:column;gap:4px;width:120px;">
+                            <div style="font-size:0.75rem;font-weight:700;color:${topColor};display:flex;justify-content:space-between;">
+                                <span>${topItem.genre.toUpperCase()}</span>
+                                <span>${topItem.pct}%</span>
+                            </div>
+                            <div style="display:flex;width:100%;height:6px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
+                                ${barSegments}
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (t.ai_label && t.ai_confidence != null) {
                 const pct = Math.round(t.ai_confidence * 100);
                 const isTarget = this.genreLabels[0] && t.ai_label.toLowerCase() === this.genreLabels[0].toLowerCase();
                 const cls = isTarget ? 'badge-tearout' : 'badge-riddim';

@@ -52,7 +52,49 @@ def get_tracks():
         cursor.execute("SELECT * FROM tracks ORDER BY created_at DESC")
         rows = cursor.fetchall()
         
-    return [dict(row) for row in rows]
+        # すべての genre_probabilities を一括取得
+        p_rows = conn.execute("SELECT track_id, genre_label, probability FROM genre_probabilities").fetchall()
+        probs_map = {}
+        for pr in p_rows:
+            tid = pr["track_id"]
+            if tid not in probs_map:
+                probs_map[tid] = {}
+            probs_map[tid][pr["genre_label"]] = float(pr["probability"])
+            
+    result = []
+    valid_genres = [g.lower() for g in settings.genre_labels]
+    
+    for row in rows:
+        t_dict = dict(row)
+        tid = t_dict["track_id"]
+        
+        if tid in probs_map and probs_map[tid]:
+            t_dict["ai_probabilities"] = probs_map[tid]
+        else:
+            # フォールバック確率（シードジャンルベース）
+            seed_genre = (t_dict.get("genre_hint") or "").replace("Seed: ", "").strip().lower()
+            if seed_genre not in valid_genres:
+                seed_genre = "trap"
+            
+            probs = {}
+            for g in settings.genre_labels:
+                gl = g.lower()
+                if gl == seed_genre:
+                    probs[gl] = 0.65
+                elif seed_genre == "trap" and gl in ["riddim", "briddim"]:
+                    probs[gl] = 0.15
+                elif seed_genre == "riddim" and gl in ["heavy_dubstep", "briddim"]:
+                    probs[gl] = 0.15
+                elif seed_genre == "melodic_dubstep" and gl in ["future_bass", "progressive_house"]:
+                    probs[gl] = 0.15
+                else:
+                    probs[gl] = 0.02
+            tot = sum(probs.values())
+            t_dict["ai_probabilities"] = {k: round(v / tot, 4) for k, v in probs.items()}
+            
+        result.append(t_dict)
+        
+    return result
 
 @app.get("/api/settings")
 def get_settings():
