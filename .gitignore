@@ -16,6 +16,7 @@ build/
 venv/
 
 # Data (large audio/model files)
+storage/
 data/raw_audio/
 data/stems/
 data/features/

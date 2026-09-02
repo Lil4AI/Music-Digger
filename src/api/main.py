@@ -25,6 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # 静的ファイルの配信設定
 static_dir = Path(__file__).parent / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
@@ -71,26 +79,8 @@ def get_tracks():
         if tid in probs_map and probs_map[tid]:
             t_dict["ai_probabilities"] = probs_map[tid]
         else:
-            # フォールバック確率（シードジャンルベース）
-            seed_genre = (t_dict.get("genre_hint") or "").replace("Seed: ", "").strip().lower()
-            if seed_genre not in valid_genres:
-                seed_genre = "trap"
-            
-            probs = {}
-            for g in settings.genre_labels:
-                gl = g.lower()
-                if gl == seed_genre:
-                    probs[gl] = 0.65
-                elif seed_genre == "trap" and gl in ["riddim", "briddim"]:
-                    probs[gl] = 0.15
-                elif seed_genre == "riddim" and gl in ["heavy_dubstep", "briddim"]:
-                    probs[gl] = 0.15
-                elif seed_genre == "melodic_dubstep" and gl in ["future_bass", "progressive_house"]:
-                    probs[gl] = 0.15
-                else:
-                    probs[gl] = 0.02
-            tot = sum(probs.values())
-            t_dict["ai_probabilities"] = {k: round(v / tot, 4) for k, v in probs.items()}
+            # まだAI推論が実行されていないトラックは空辞書（未判定）とする
+            t_dict["ai_probabilities"] = {}
             
         result.append(t_dict)
         
@@ -260,9 +250,18 @@ def get_audio_file(track_id: str, stem: str):
             raise HTTPException(status_code=404, detail="Audio file not found")
     elif stem in ["drums", "bass", "subbass", "other"]:
         audio_path = Path(settings.project_root) / settings.paths.web_audio / "stems" / track_id / f"{stem}.mp3"
-        if not audio_path.exists():
-            raise HTTPException(status_code=404, detail="Stem audio file not found")
-        return FileResponse(str(audio_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
+        if audio_path.exists():
+            return FileResponse(str(audio_path), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
+        
+        # フォールバック: ステム未分離の場合は元音源 (raw_wav / raw_mp3) を返す
+        raw_mp3 = Path(settings.project_root) / settings.paths.web_audio / "raw" / f"{track_id}.mp3"
+        raw_wav = Path(settings.project_root) / settings.paths.raw_audio / f"{track_id}.wav"
+        if raw_mp3.exists():
+            return FileResponse(str(raw_mp3), media_type="audio/mpeg", headers={"Accept-Ranges": "bytes"})
+        elif raw_wav.exists():
+            return FileResponse(str(raw_wav), media_type="audio/wav", headers={"Accept-Ranges": "bytes"})
+        else:
+            raise HTTPException(status_code=404, detail="Audio file not found")
     else:
         raise HTTPException(status_code=400, detail="Invalid stem type")
 
@@ -350,6 +349,36 @@ def start_pipeline(req: PipelineRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(run_pipeline_task, req.url, log_file)
     return {"status": "started", "msg": "Pipeline has been started in the background."}
 
+@app.post("/api/model/predict")
+def run_ai_inference(background_tasks: BackgroundTasks):
+    """既存のモデル重み（パラメータ更新なし）を使用して全トラックのAI判定を実行する"""
+    import os
+    def run_predict_task():
+        python_exe = sys.executable
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path(settings.project_root))
+        try:
+            # 1. ステム分離
+            subprocess.run([str(python_exe), "scripts/run_separation.py"], env=env, cwd=str(settings.project_root))
+        except Exception as e:
+            print("Separation skipped or failed:", e)
+            
+        try:
+            # 2. 特徴量抽出
+            subprocess.run([str(python_exe), "scripts/run_features.py"], env=env, cwd=str(settings.project_root))
+        except Exception as e:
+            print("Feature extraction failed:", e)
+
+        try:
+            # 3. 既存のモデル重みでAI判定実行
+            subprocess.run([str(python_exe), "scripts/run_inference.py"], env=env, cwd=str(settings.project_root))
+            print("AI Inference finished successfully!")
+        except Exception as e:
+            print("Inference failed:", e)
+
+    background_tasks.add_task(run_predict_task)
+    return {"status": "started", "msg": "AI inference run scheduled."}
+
 @app.post("/api/model/train")
 def train_model(background_tasks: BackgroundTasks):
     """人間が付けた正解ラベルをもとに、AI判定モデルを再学習する"""
@@ -366,6 +395,37 @@ def train_model(background_tasks: BackgroundTasks):
         
     background_tasks.add_task(run_train)
     return {"status": "started", "msg": "Model training has been scheduled."}
+
+@app.post("/api/benchmark/run")
+def run_benchmark_endpoint(background_tasks: BackgroundTasks):
+    """未学習曲ベンチマーク（10曲/ジャンル・DB非保存）を実行する"""
+    import os
+    def run_bm():
+        python_exe = sys.executable
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(Path(settings.project_root))
+        try:
+            subprocess.run([str(python_exe), "scripts/benchmark_10_tracks_with_separation.py"], env=env, cwd=str(settings.project_root))
+            print("Benchmark test completed successfully!")
+        except Exception as e:
+            print("Benchmark execution error:", e)
+            
+    background_tasks.add_task(run_bm)
+    return {"status": "started", "msg": "Benchmark evaluation has been scheduled."}
+
+@app.get("/api/benchmark/results")
+def get_benchmark_results():
+    """最新のベンチマーク結果JSONを返す"""
+    res_path = Path(settings.project_root) / "storage" / "benchmark_results.json"
+    if not res_path.exists():
+        return {"exists": False, "msg": "No benchmark results found yet."}
+    try:
+        with open(res_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            data["exists"] = True
+            return data
+    except Exception as e:
+        return {"exists": False, "error": str(e)}
 
 @app.get("/api/pipeline/logs")
 def get_pipeline_logs():

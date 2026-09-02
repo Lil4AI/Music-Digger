@@ -127,9 +127,7 @@ def train_and_evaluate():
             y_prob = pipeline.predict_proba(X_val)[:, 1] if hasattr(pipeline.clf, "predict_proba") else y_pred
             
             metrics["accuracy"].append(accuracy_score(y_val, y_pred))
-            metrics["f1"].append(f1_score(y_val, y_pred))
-            if len(np.unique(y_val)) > 1:
-                metrics["auc"].append(roc_auc_score(y_val, y_prob))
+            metrics["f1"].append(f1_score(y_val, y_pred, average='weighted', zero_division=0))
                 
         avg_acc = np.mean(metrics["accuracy"])
         avg_f1 = np.mean(metrics["f1"])

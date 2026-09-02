@@ -13,6 +13,7 @@ heavy_dubstep|https://soundcloud.com/doctor-p
 heavy_dubstep|https://soundcloud.com/barely-alive
 heavy_dubstep|https://soundcloud.com/datsik
 heavy_dubstep|https://soundcloud.com/subtronics
+heavy_dubstep|https://soundcloud.com/mildfre/sets/brostep
 
 # ──────────────────────────────────────────
 # color_bass（Colour Bass / Rushdown系）

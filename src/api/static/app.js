@@ -41,11 +41,25 @@ const App = {
     },
 
     bindButtons() {
+        // Run Benchmark Test
+        const benchBtn = document.getElementById('btn-run-benchmark');
+        if (benchBtn) benchBtn.addEventListener('click', () => {
+            document.getElementById('benchmark-modal').style.display = 'flex';
+            this.loadBenchmarkResults();
+        });
+
+        const closeBenchBtn = document.getElementById('btn-close-benchmark');
+        if (closeBenchBtn) closeBenchBtn.addEventListener('click', () => {
+            document.getElementById('benchmark-modal').style.display = 'none';
+        });
+
+        // Run AI Inference (no retraining)
+        const predictBtn = document.getElementById('btn-predict-model');
+        if (predictBtn) predictBtn.addEventListener('click', () => this.runInferenceOnly());
+
         // Train model
         const trainBtn = document.getElementById('btn-train-model');
         if (trainBtn) trainBtn.addEventListener('click', () => this.trainModel());
-
-        // Note: Label buttons are now dynamically generated in renderLabelingButtons()
 
         // Play/pause
         const playBtn = document.getElementById('play-btn');
@@ -138,18 +152,26 @@ const App = {
                 aiHtml = `<span class="label-badge ${cls}">${t.ai_label.toUpperCase()} ${pct}%</span>`;
             }
 
-            let humanHtml = '-';
-            if (t.human_label) {
-                const isTarget = this.genreLabels[0] && t.human_label.toLowerCase() === this.genreLabels[0].toLowerCase();
-                const cls = isTarget ? 'badge-tearout' : 'badge-riddim';
-                humanHtml = `<span class="label-badge ${cls}">${t.human_label.toUpperCase()}</span>`;
-            }
+            let humanHtml = '';
+            const currentHuman = (t.human_label || '').toLowerCase();
+            const options = [
+                { val: '', label: '— 未ラベル —' },
+                ...this.genreLabels.map(g => ({ val: g.toLowerCase(), label: g.toUpperCase() }))
+            ].map(opt => `<option value="${opt.val}" ${opt.val === currentHuman ? 'selected' : ''}>${opt.label}</option>`).join('');
+
+            humanHtml = `
+                <select class="genre-select" data-id="${t.track_id}" style="background:#1e293b; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; font-size:0.85rem; cursor:pointer;">
+                    ${options}
+                </select>
+            `;
 
             const trackTitle = t.title || 'Unknown Title';
             const trackArtist = t.artist || 'Unknown Artist';
             const sourceLink = t.source_url
                 ? `<a href="${t.source_url}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;">↗ SoundCloud</a>`
                 : (t.source || '-');
+
+            const isPlayingThis = this.currentTrackId === t.track_id && this.isPlaying;
 
             tr.innerHTML = `
                 <td>
@@ -162,15 +184,160 @@ const App = {
                 <td>${status}</td>
                 <td>${aiHtml}</td>
                 <td>${humanHtml}</td>
-                <td><button class="btn-action" data-id="${t.track_id}">Analyze &amp; Play</button></td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <button class="btn-action btn-play-stems" data-id="${t.track_id}" style="margin-right: 6px; background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4);">
+                        ${isPlayingThis ? '⏸ Pause' : '▶ Play Stems'}
+                    </button>
+                    <button class="btn-action btn-skip-track" data-id="${t.track_id}" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
+                        ⏭ Skip
+                    </button>
+                </td>
             `;
 
-            tr.querySelector('.btn-action').addEventListener('click', () => {
-                this.loadTrackForLabeling(t.track_id);
+            // Select change handler
+            const selectEl = tr.querySelector('.genre-select');
+            selectEl.addEventListener('change', (e) => {
+                const val = e.target.value;
+                if (val) {
+                    this.updateTrackLabelDirect(t.track_id, val);
+                }
+            });
+
+            // Play Stems handler
+            tr.querySelector('.btn-play-stems').addEventListener('click', () => {
+                this.loadTrackForDashboardPlayer(t.track_id);
+            });
+
+            // Skip Track handler
+            tr.querySelector('.btn-skip-track').addEventListener('click', () => {
+                this.skipTrackFromDashboard(t.track_id);
             });
 
             tbody.appendChild(tr);
         });
+    },
+
+    async updateTrackLabelDirect(trackId, label) {
+        try {
+            const res = await fetch(`/api/tracks/${trackId}/label`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label }),
+            });
+            if (res.ok) {
+                await this.loadTracks();
+            } else {
+                alert('Failed to update label.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Network error.');
+        }
+    },
+
+    async skipTrackFromDashboard(trackId) {
+        if (!confirm('このトラックを削除/スキップしますか？')) return;
+        try {
+            const res = await fetch(`/api/labeling/skip/${trackId}`, { method: 'POST' });
+            if (res.ok) {
+                if (this.currentTrackId === trackId) {
+                    this.destroyPlayers();
+                    document.getElementById('dashboard-player-panel').style.display = 'none';
+                }
+                await this.loadTracks();
+            } else {
+                alert('スキップに失敗しました。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラー');
+        }
+    },
+
+    loadTrackForDashboardPlayer(trackId) {
+        const playerPanel = document.getElementById('dashboard-player-panel');
+        playerPanel.style.display = 'block';
+
+        if (this.currentTrackId === trackId && this.players.length > 0) {
+            this.togglePlayPause();
+            return;
+        }
+
+        this.currentTrackId = trackId;
+        const track = this.tracks.find(t => t.track_id === trackId);
+        const heading = track && track.title ? `${track.artist || 'Unknown'} - ${track.title}` : trackId;
+        document.getElementById('dash-player-title').textContent = heading;
+
+        const aiBadge = document.getElementById('dash-player-ai-badge');
+        if (track && track.ai_probabilities && Object.keys(track.ai_probabilities).length > 0) {
+            const topGenre = Object.entries(track.ai_probabilities).sort((a, b) => b[1] - a[1])[0];
+            aiBadge.textContent = `AI: ${topGenre[0].toUpperCase()} (${Math.round(topGenre[1] * 100)}%)`;
+            aiBadge.className = 'label-badge badge-tearout';
+        } else {
+            aiBadge.textContent = 'AI: Unclassified';
+            aiBadge.className = 'label-badge badge-neutral';
+        }
+
+        this.initDashboardWaveforms(trackId);
+    },
+
+    initDashboardWaveforms(trackId) {
+        this.destroyPlayers();
+
+        const container = document.getElementById('dash-waveform-container');
+        container.innerHTML = '';
+
+        STEMS.forEach(stem => {
+            const row = document.createElement('div');
+            row.className = 'stem-row';
+
+            const label = document.createElement('div');
+            label.className = 'stem-label';
+            label.textContent = stem.label;
+            label.style.color = stem.wave;
+            row.appendChild(label);
+
+            const waveDiv = document.createElement('div');
+            waveDiv.className = 'stem-wave';
+            row.appendChild(waveDiv);
+
+            container.appendChild(row);
+
+            const ws = WaveSurfer.create({
+                container: waveDiv,
+                waveColor: stem.wave,
+                progressColor: stem.progress,
+                height: 48,
+                barWidth: 2,
+                barGap: 1,
+                barRadius: 2,
+                cursorColor: '#fff',
+                cursorWidth: 1,
+                url: `/api/audio/${trackId}/${stem.key}`,
+            });
+
+            this.players.push(ws);
+        });
+
+        // Sync seeking across stem waveforms
+        this.players.forEach((ws, i) => {
+            ws.on('seeking', (currentTime) => {
+                if (this.isSeeking) return;
+                this.isSeeking = true;
+                this.players.forEach((other, j) => {
+                    if (j !== i) other.setTime(currentTime);
+                });
+                this.isSeeking = false;
+            });
+        });
+
+        const playBtn = document.getElementById('dash-play-btn');
+        if (playBtn) {
+            playBtn.textContent = '▶ Play All Stems';
+            playBtn.onclick = () => this.togglePlayPause();
+        }
+
+        this.isPlaying = false;
     },
 
     /* ── Labeling ─────────────────────────────────────── */
@@ -275,23 +442,67 @@ const App = {
         }
     },
 
-    /* ── Label Submit ─────────────────────────────────── */
+    /* ── Label Submit & Fast Labeling ─────────────────── */
     renderLabelingButtons() {
         const container = document.getElementById('labeling-actions');
         if (!container) return;
         container.innerHTML = '';
-        this.genreLabels.forEach((genre, idx) => {
+
+        const gridHeader = document.createElement('div');
+        gridHeader.style.cssText = 'font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;';
+        gridHeader.textContent = '🏷 Select Genre Label:';
+        container.appendChild(gridHeader);
+
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px;';
+
+        const GENRE_EMOJIS = {
+            heavy_dubstep:    '💥',
+            color_bass:       '🎨',
+            riddim:           '🔁',
+            briddim:          '🌋',
+            bass_house:       '🏠',
+            future_bass:      '🌊',
+            melodic_dubstep:  '✨',
+            progressive_house:'🎹',
+            drum_and_bass:    '🥁',
+            trap:             '🔥'
+        };
+
+        this.genreLabels.forEach((genre) => {
             const btn = document.createElement('button');
-            // Class index 0: btn-primary (high priority equivalent), index 1: btn-secondary (second class)
-            btn.className = `btn ${idx === 0 ? 'btn-primary btn-tearout' : 'btn-secondary btn-riddim'}`;
-            btn.id = `btn-${genre}`;
-            btn.innerHTML = `
-                <span class="glow"></span>
-                <span class="btn-text">${genre.toUpperCase()}</span>
-            `;
+            const emoji = GENRE_EMOJIS[genre.toLowerCase()] || '🎵';
+            btn.className = 'btn-genre-action';
+            btn.style.cssText = 'padding: 10px 8px; font-weight: 700; font-size: 0.82rem; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s;';
+            btn.innerHTML = `<span>${emoji}</span> <span>${genre.toUpperCase()}</span>`;
+            
+            btn.addEventListener('mouseover', () => {
+                btn.style.background = 'var(--accent-primary)';
+                btn.style.borderColor = 'var(--accent-primary)';
+            });
+            btn.addEventListener('mouseout', () => {
+                btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            });
             btn.addEventListener('click', () => this.submitLabel(genre));
-            container.appendChild(btn);
+            grid.appendChild(btn);
         });
+
+        container.appendChild(grid);
+
+        // Skip Button
+        const skipBtn = document.createElement('button');
+        skipBtn.className = 'btn-skip-labeling';
+        skipBtn.style.cssText = 'width: 100%; padding: 14px; font-weight: 700; font-size: 0.95rem; border-radius: 12px; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: #f43f5e; cursor: pointer; text-align: center; transition: all 0.2s;';
+        skipBtn.innerHTML = '⏭ Skip Track (判断できない)';
+        skipBtn.addEventListener('mouseover', () => {
+            skipBtn.style.background = 'rgba(244, 63, 94, 0.3)';
+        });
+        skipBtn.addEventListener('mouseout', () => {
+            skipBtn.style.background = 'rgba(244, 63, 94, 0.15)';
+        });
+        skipBtn.addEventListener('click', () => this.skipCurrentLabelingTrack());
+        container.appendChild(skipBtn);
     },
 
     async submitLabel(label) {
@@ -303,22 +514,46 @@ const App = {
                 body: JSON.stringify({ label }),
             });
             if (res.ok) {
-                // Update only the .btn-text span to preserve the glow span
-                const btn = document.getElementById(`btn-${label}`);
-                if (btn) {
-                    const textSpan = btn.querySelector('.btn-text');
-                    if (textSpan) {
-                        textSpan.textContent = '✓ SAVED';
-                        setTimeout(() => { textSpan.textContent = label.toUpperCase(); }, 1200);
-                    }
-                }
                 await this.loadTracks();
+                await this.loadNextUnlabeledTrack();
             } else {
                 alert('Failed to save label.');
             }
         } catch (e) {
             console.error(e);
             alert('Network error.');
+        }
+    },
+
+    async skipCurrentLabelingTrack() {
+        if (!this.currentTrackId) return;
+        if (!confirm('このトラックを削除/スキップしますか？')) return;
+        try {
+            const res = await fetch(`/api/labeling/skip/${this.currentTrackId}`, { method: 'POST' });
+            if (res.ok) {
+                await this.loadTracks();
+                await this.loadNextUnlabeledTrack();
+            } else {
+                alert('スキップに失敗しました。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラー');
+        }
+    },
+
+    async loadNextUnlabeledTrack() {
+        try {
+            const res = await fetch('/api/labeling/next');
+            const data = await res.json();
+            if (data && !data.done && data.track) {
+                this.loadTrackForLabeling(data.track.track_id);
+            } else {
+                alert('🎉 全ての未ラベルトラックの処理が完了しました！');
+                document.querySelector('[data-target="dashboard"]').click();
+            }
+        } catch (e) {
+            console.error('loadNextUnlabeledTrack error', e);
         }
     },
 
@@ -342,6 +577,40 @@ const App = {
             }
         } catch (e) {
             out.textContent = `Error: ${e.message}`;
+        }
+    },
+
+    async runInferenceOnly() {
+        const btn = document.getElementById('btn-predict-model');
+        if (!btn) return;
+        const textSpan = btn.querySelector('.btn-text');
+        const origText = textSpan.textContent;
+        textSpan.textContent = '⚡ 判定実行中...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('/api/model/predict', { method: 'POST' });
+            if (res.ok) {
+                textSpan.textContent = '⚡ AI判定完了！';
+                await this.loadTracks();
+                setTimeout(() => {
+                    textSpan.textContent = origText;
+                    btn.disabled = false;
+                }, 3000);
+            } else {
+                textSpan.textContent = '❌ 判定失敗';
+                setTimeout(() => {
+                    textSpan.textContent = origText;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        } catch (e) {
+            console.error(e);
+            textSpan.textContent = '❌ 通信エラー';
+            setTimeout(() => {
+                textSpan.textContent = origText;
+                btn.disabled = false;
+            }, 3000);
         }
     },
 
@@ -395,8 +664,160 @@ const App = {
             console.error('pollLogs', e);
         }
     },
+
+    bindBenchmarkEvents() {
+        const btnRun = document.getElementById('btn-run-benchmark');
+        const btnClose = document.getElementById('btn-close-benchmark');
+        const modal = document.getElementById('benchmark-modal');
+
+        if (btnRun) {
+            btnRun.addEventListener('click', () => {
+                modal.style.display = 'flex';
+                this.loadBenchmarkResults();
+            });
+        }
+
+        if (btnClose) {
+            btnClose.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+        }
+    },
+
+    async runBenchmarkTest() {
+        if (!confirm('未学習曲のベンチマーク評価（各ジャンル10曲・音源分離あり・DB非保存）を開始しますか？')) return;
+        try {
+            const res = await fetch('/api/benchmark/run', { method: 'POST' });
+            if (res.ok) {
+                alert('ベンチマーク評価がバックグラウンドで開始されました！完了後、モーダルを再度開くと最新結果が表示されます。');
+                document.getElementById('benchmark-modal-body').innerHTML = `
+                    <div style="padding: 20px; text-align: center;">
+                        <p style="font-size: 1.1rem; color: #10B981; font-weight: bold;">🚀 ベンチマーク評価タスクがバックグラウンドで進行中です...</p>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">(各ジャンル10曲の音源分離とAI判定を行っています。完了後に再度この画面を開いてください)</p>
+                    </div>
+                `;
+            } else {
+                alert('ベンチマーク開始に失敗しました。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('通信エラー');
+        }
+    },
+
+    async loadBenchmarkResults() {
+        const body = document.getElementById('benchmark-modal-body');
+        body.innerHTML = '<p style="color: var(--text-muted);">最新ベンチマーク結果を読み込み中...</p>';
+        try {
+            const res = await fetch('/api/benchmark/results');
+            const data = await res.json();
+
+            if (!data.exists) {
+                body.innerHTML = `
+                    <div style="text-align: center; padding: 30px;">
+                        <p style="font-size: 1rem; color: var(--text-muted); margin-bottom: 20px;">まだベンチマーク評価が実行されていません。</p>
+                        <button class="btn btn-primary" onclick="App.runBenchmarkTest()" style="background: linear-gradient(135deg, #10B981, #059669); padding: 10px 24px;">
+                            🎯 今すぐベンチマーク評価を実行する
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // 統計計算
+            const total = data.total || 0;
+            const correct = data.correct || 0;
+            const accuracy = data.accuracy || 0;
+            const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleString('ja-JP') : '不明';
+
+            let genreStats = {};
+            (data.results || []).forEach(r => {
+                const g = r.expected.toUpperCase();
+                if (!genreStats[g]) genreStats[g] = { total: 0, correct: 0 };
+                genreStats[g].total++;
+                if (r.match) genreStats[g].correct++;
+            });
+
+            let genreRowsHtml = '';
+            Object.keys(genreStats).forEach(g => {
+                const st = genreStats[g];
+                const rate = ((st.correct / st.total) * 100).toFixed(1);
+                genreRowsHtml += `
+                    <tr>
+                        <td style="font-weight: bold;">${g}</td>
+                        <td>${st.correct} / ${st.total}</td>
+                        <td style="color: ${rate >= 70 ? '#10B981' : rate >= 40 ? '#F59E0B' : '#EF4444'}; font-weight: bold;">${rate}%</td>
+                    </tr>
+                `;
+            });
+
+            let itemRowsHtml = (data.results || []).map((r, i) => {
+                const icon = r.match ? '✅' : '❌';
+                const conf = (r.confidence * 100).toFixed(1);
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="text-align: center;">${icon}</td>
+                        <td style="font-weight: 500; font-size: 0.85rem;">${r.expected.toUpperCase()}</td>
+                        <td style="font-weight: 600; color: ${r.match ? '#10B981' : '#F59E0B'}; font-size: 0.85rem;">${r.predicted.toUpperCase()} (${conf}%)</td>
+                        <td style="font-size: 0.8rem; color: var(--text-muted);">${r.artist} - ${r.title}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            body.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">実行日時: ${timestamp}</div>
+                        <div style="font-size: 1.8rem; font-weight: bold; color: #10B981; margin-top: 4px;">
+                            正答率: ${accuracy}% <span style="font-size: 1rem; color: var(--text-muted); font-weight: normal;">(${correct} / ${total} 一致)</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="App.runBenchmarkTest()" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 0.85rem; padding: 8px 16px;">
+                        🔄 ベンチマーク再実行
+                    </button>
+                </div>
+
+                <h4 style="margin-bottom: 10px; font-size: 1rem; border-left: 3px solid #10B981; padding-left: 8px;">ジャンル別正答率一覧</h4>
+                <table class="tracks-table" style="margin-bottom: 24px;">
+                    <thead>
+                        <tr>
+                            <th>ジャンル</th>
+                            <th>一致数</th>
+                            <th>正答率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${genreRowsHtml}
+                    </tbody>
+                </table>
+
+                <h4 style="margin-bottom: 10px; font-size: 1rem; border-left: 3px solid #6366F1; padding-left: 8px;">全評価トラック詳細 (計 ${total}曲)</h4>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                    <table class="tracks-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">判定</th>
+                                <th>検索ジャンル</th>
+                                <th>AI予測結果</th>
+                                <th>楽曲名 / アーティスト</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } catch (e) {
+            console.error('loadBenchmarkResults', e);
+            body.innerHTML = '<p style="color: #EF4444;">結果の取得に失敗しました。</p>';
+        }
+    }
 };
 
 /* ── Global binding & boot ────────────────────────────── */
-window.app = App;
-document.addEventListener('DOMContentLoaded', () => App.init());
+window.App = App;
+window.runBenchmarkTest = () => App.runBenchmarkTest();
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
